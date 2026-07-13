@@ -1,0 +1,20 @@
+{
+  "name": "handoff-slice-marketplace",
+  "owner": {
+    "name": "PunzFlorian"
+  },
+  "metadata": {
+    "description": "Topic-scoped conversation handoffs for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "handoff-slice",
+      "source": {
+        "source": "github",
+        "repo": "PunzFlorian/cc-handoff-slice"
+      },
+      "description": "Extract just the topic-relevant slice of a conversation into a standalone, uuid-addressable handoff doc",
+      "version": "1.0.0"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "handoff-slice",
+  "description": "Extract just the topic-relevant slice of a conversation into a standalone handoff doc, addressable by uuid, so a fresh session loads only what it needs instead of the whole history.",
+  "version": "1.0.0",
+  "author": {
+    "name": "PunzFlorian"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/PunzFlorian/cc-handoff-slice",
+  "repository": "https://github.com/PunzFlorian/cc-handoff-slice"
+}
