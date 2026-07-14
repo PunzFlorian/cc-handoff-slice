@@ -22,8 +22,12 @@ Works in any repo after that — no per-project setup.
 | `/handoff-slice:create <topic>` | Extracts everything relevant to `<topic>` from the current conversation into `.claude/handoffs/<uuid>-<slug>.md` |
 | `/handoff-slice:load <uuid or slug>` | Loads a saved slice into the current session and picks up from its Next Steps |
 | `/handoff-slice:list` | Shows every slice saved in this repo |
+| `/handoff-slice:issue-create <topic>` | Same extraction, but files it as a self-contained GitHub issue instead of a local file — for handing off to someone else, or a machine that doesn't have your local `.claude/handoffs/` |
+| `/handoff-slice:issue-load <issue number or url>` | Loads a slice previously filed as a GitHub issue |
 
 You can also just say things like "slice off this part about the auth bug" — the bundled skill routes natural phrasing to the right command.
+
+`issue-create`/`issue-load` require the [`gh` CLI](https://cli.github.com/) installed and authenticated against this repo. Issues get a `handoff-slice` label so they're easy to find later with `gh issue list --label handoff-slice`. The issue body is fully self-contained — no link back to anything local — and has the exact `/handoff-slice:issue-load <number>` command embedded right in the description, so anyone opening it on GitHub knows exactly how to pick it up.
 
 ## Example
 
@@ -90,6 +94,18 @@ Each saved file is a small, self-contained doc:
 ```
 
 Only sections with real content are included (except Dead Ends, which is always present — "None" if nothing failed). Secrets and credentials are redacted before writing, and content already captured elsewhere (specs, PRs, commits, issues) is referenced by path or URL instead of duplicated.
+
+`issue-create` uses the same sections minus the header block and `Status` field (the issue's own title, creation date, and open/closed state already cover that), with a resume-command block inserted at the very top:
+
+```markdown
+> **Resume this handoff in Claude Code:**
+> ```
+> /handoff-slice:issue-load 42
+> ```
+
+## Objective
+...
+```
 
 ## License
 

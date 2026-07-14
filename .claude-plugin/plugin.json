@@ -1,7 +1,7 @@
 {
   "name": "handoff-slice",
-  "description": "Extract just the topic-relevant slice of a conversation into a standalone handoff doc, addressable by uuid, so a fresh session loads only what it needs instead of the whole history.",
-  "version": "1.0.0",
+  "description": "Extract just the topic-relevant slice of a conversation into a standalone handoff doc — a local file or a self-contained GitHub issue — so a fresh session, or a different person, loads only what it needs instead of the whole history.",
+  "version": "1.1.0",
   "author": {
     "name": "PunzFlorian"
   },

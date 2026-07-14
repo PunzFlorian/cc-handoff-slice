@@ -13,8 +13,8 @@
         "source": "github",
         "repo": "PunzFlorian/cc-handoff-slice"
       },
-      "description": "Extract just the topic-relevant slice of a conversation into a standalone, uuid-addressable handoff doc",
-      "version": "1.0.0"
+      "description": "Extract just the topic-relevant slice of a conversation into a standalone handoff doc — local file or GitHub issue",
+      "version": "1.1.0"
     }
   ]
 }
