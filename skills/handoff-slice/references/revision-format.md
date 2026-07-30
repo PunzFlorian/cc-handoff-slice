@@ -54,6 +54,8 @@ One line per correction, each naming what changed **and** the evidence.
 
 Without stamps a mixed-age slice reads as uniformly fresh.
 
+**Stamp what changed, not what you checked.** Content you verified and left alone stays exactly as it was — no `[verified unchanged]` markers in the file. Verification belongs in the report you give the user (see below), where it costs nothing. Written into the slice it compounds: after five revisions every paragraph carries a trail of dates saying nothing happened, and the stamps that *do* mark real changes stop standing out.
+
 ## Order of work: highest damage per byte first
 
 1. **Status** — an `active` slice that's actually blocked sends the next session into a wall.
@@ -85,5 +87,15 @@ Sections the slice never had aren't errors — `create` omits empty ones. Add on
 Report which sections you checked and found unchanged — "verified, no change" is information; silence isn't.
 
 ## Status
+
+`Status` drives how `load` and `list` present the slice, so the three values have to mean the same thing to every session. They are not moods:
+
+| Value | Means | Test |
+|-------|-------|------|
+| `active` | Someone can pick this up right now and make progress | Next Step 1 is something the next session can just *do* — including "figure out where X happens" or "decide between A and B". An open design question you are free to settle yourself is **active**, not blocked. |
+| `blocked` | Progress needs something outside this slice | Waiting on a decision that isn't yours, an unmerged PR, an unanswered question, a dependency, someone else's work. If you cannot proceed no matter how much effort you apply, it's blocked. |
+| `ready-to-close` | The work is finished or abandoned; nothing actionable remains | Remaining Work is empty or entirely superseded. |
+
+The line that gets confused: **undecided is not blocked.** A slice whose next step is "choose the capture point" is `active` — the choice is yours to make. It's `blocked` only if the choice belongs to someone else.
 
 A revision may set `Status` to `ready-to-close`. It may **not** act on that: never delete the file, never `gh issue close`. Say the slice looks closeable and leave the act to the user.

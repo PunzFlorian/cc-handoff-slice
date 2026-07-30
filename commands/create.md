@@ -73,6 +73,14 @@ Non-obvious traps, or things that look wrong but are intentional.
 Skills the next session should invoke to continue, if any — omit if none.
 ```
 
+**Status** is not a mood — `load` and `list` present the slice differently based on it, so pick by these definitions:
+
+- `active` — someone can pick this up right now and make progress. Next Step 1 is something they can just *do*, including "work out where X happens" or "decide between A and B". **An open question you're free to settle yourself is `active`.**
+- `blocked` — progress needs something outside this slice: a decision that isn't yours, an unmerged PR, an unanswered question, someone else's work. If no amount of effort gets you moving, it's blocked.
+- `ready-to-close` — nothing actionable remains.
+
+Undecided is not blocked. That's the one that gets miscalled.
+
 ## 4. Hand back the resume command
 
 Tell the user the uuid, slug, and file path, then end with a fenced block containing **only** the exact command to load this slice in a new session, so it's trivially copy-pasteable:
