@@ -29,6 +29,7 @@ Create the directory if needed and write to `.claude/handoffs/<uuid>-<slug>.md` 
 
 **UUID**: <uuid>
 **Created**: <date>
+**Updated**: <date>
 **Topic**: <one-line description>
 **Status**: active | blocked | ready-to-close
 

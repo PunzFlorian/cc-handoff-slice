@@ -1,6 +1,6 @@
 ---
 name: handoff-slice
-description: Extracts a topic-scoped slice of the current conversation into a standalone handoff doc (local file or GitHub issue), and loads previously saved slices back in. Activates on mentions of handing off, slicing off, filing an issue for later, or saving part of a conversation, and on session start when saved slices exist.
+description: Extracts a topic-scoped slice of the current conversation into a standalone handoff doc (local file or GitHub issue), loads previously saved slices back in, and revises ones that have gone stale. Activates on mentions of handing off, slicing off, filing an issue for later, saving part of a conversation, or a handoff being out of date, and on session start when saved slices exist.
 ---
 
 # Handoff Slicing
@@ -13,7 +13,7 @@ Two storage backends, pick based on who needs it:
 
 ## Trigger phrases
 
-Activate when the user says things like: "hand off", "slice this off", "save this part for later", "extract just the X part", "let's continue this elsewhere", "give me a handoff for this topic", "file this as a github issue", "create an issue for this", "load issue #123", "hand this off to someone else".
+Activate when the user says things like: "hand off", "slice this off", "save this part for later", "extract just the X part", "let's continue this elsewhere", "give me a handoff for this topic", "file this as a github issue", "create an issue for this", "load issue #123", "hand this off to someone else", "the handoff is out of date", "update the slice", "that slice is wrong now".
 
 ## Routing intent
 
@@ -22,6 +22,14 @@ Activate when the user says things like: "hand off", "slice this off", "save thi
 - User isn't sure what's saved locally → run `/handoff-slice:list`.
 - User wants to **hand this off to someone else**, or to a machine without this local file → run `/handoff-slice:issue-create <topic>`.
 - User wants to **resume from a GitHub issue** → run `/handoff-slice:issue-load <issue number or url>`.
+- A slice that already exists has gone **stale** → run `/handoff-slice:update <uuid or slug>`, or `/handoff-slice:issue-update <number>` for an issue-backed one. Not `create` — a new slice loses what the old one learned.
+
+## Stale slices
+
+A loaded slice is a snapshot, not the truth. Work lands after a slice is written and nobody who loads it knows. Two habits:
+
+- When you notice, mid-work, that a loaded slice's plan has been overtaken — a step already done, an approach disproven, a decision reversed — offer to revise it: "This slice's Next Step 1 was done in `50a6373`. Want me to update it?"
+- When revising, **mark, don't delete**. A handoff's most valuable content is often a reversal: "we planned X, X was wrong, here's the measurement." Overwrite the plan and you delete the warning. Superseded items move into **Dead Ends** carrying their disproof. See `references/revision-format.md` for the full conventions — never improvise a second update dialect.
 
 ## On session start
 

@@ -21,6 +21,24 @@ Give the user a short summary — topic, status, and the first item under **Next
 
 Prominently surface **Dead Ends** and **Gotchas** so they aren't repeated or missed.
 
-## 3. Confirm and continue
+## 3. Check the slice isn't stale
+
+A slice is a snapshot, not the truth. Before acting on its first **Next Step**, confirm that step hasn't already been done or been invalidated:
+
+```
+git log --oneline --since=<slice Updated or Created date>
+```
+
+Also check the state of any issue or PR that step depends on (`gh issue view`, `gh pr view`), and — the check that matters most — search for issues the slice **doesn't** reference, closed ones included:
+
+```
+gh issue list --state all --search "<keyword from the first Next Step>"
+```
+
+An approach can be disproven in an issue the slice never knew about. Following only the links already in the slice cannot find that.
+
+If the first step looks already-done or disproven, say so instead of building it, and offer `/handoff-slice:update <uuid>` to bring the slice current before continuing. If the slice carries a revision banner, read it and honor the corrections in it over anything they supersede further down.
+
+## 4. Confirm and continue
 
 Ask if the user wants to continue. Once confirmed, proceed from the first item in **Next Steps**, unless they redirect. If anything critical in the slice is ambiguous, ask rather than guessing.

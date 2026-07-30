@@ -21,11 +21,32 @@ Works in any repo after that — no per-project setup.
 |---------|--------------|
 | `/handoff-slice:create <topic>` | Extracts everything relevant to `<topic>` from the current conversation into `.claude/handoffs/<uuid>-<slug>.md` |
 | `/handoff-slice:load <uuid or slug>` | Loads a saved slice into the current session and picks up from its Next Steps |
+| `/handoff-slice:update [uuid or slug]` | Revises a slice that's gone stale — derives what changed from the conversation *and* from repo state |
 | `/handoff-slice:list` | Shows every slice saved in this repo |
 | `/handoff-slice:issue-create <topic>` | Same extraction, but files it as a self-contained GitHub issue instead of a local file — for handing off to someone else, or a machine that doesn't have your local `.claude/handoffs/` |
 | `/handoff-slice:issue-load <issue number or url>` | Loads a slice previously filed as a GitHub issue |
+| `/handoff-slice:issue-update <issue number or url>` | Revises an issue-backed handoff in place |
 
 You can also just say things like "slice off this part about the auth bug" — the bundled skill routes natural phrasing to the right command.
+
+## Keeping a slice current
+
+A slice is a snapshot. On long-running work it outlives merges, and then it lies — its first Next Step is already done, or its plan was disproven days ago. A session that trusts the doc builds dead work.
+
+Two things address that:
+
+- **`load` verifies before acting.** Before working the first Next Step it checks `git log` since the slice was written, plus the state of any issue or PR that step depends on. If the step's already done or invalidated, it says so instead of building it.
+- **`update` revises in place**, deriving what changed from the conversation *and* from repo state — because the most damaging staleness is the kind nobody in the room mentioned. You don't have to tell it what moved.
+
+The rule `update` is built around: **mark, don't delete.**
+
+> A handoff's most valuable content is often a reversal — "we planned X, X turned out to be wrong, here's the measurement that disproved it." Overwrite the plan and you delete the warning, and the next session cheerfully re-derives the dead end.
+
+So superseded plan items move into **Dead Ends** carrying their disproof, superseded table rows get struck through rather than removed, a dated revision banner goes in the first ten lines, and new content is date-stamped so three-day-old reasoning is distinguishable from three-week-old. The full conventions live in [`skills/handoff-slice/references/revision-format.md`](skills/handoff-slice/references/revision-format.md) and are shared by both backends, so a revised local slice and a revised issue read identically.
+
+For issues, the **body is the single source of truth** — it's edited in place and always current. Since GitHub body edits are silent, `issue-update` also posts a short dated comment pointing at the body, but only when Status, Next Steps, or Dead Ends changed. The comment never contains a copy of the handoff, so there's no second aging version to confuse anyone, and `issue-load` reads the body only.
+
+Neither command closes anything. If the work looks finished they'll say the slice is closeable and leave the act to you.
 
 `issue-create`/`issue-load` require the [`gh` CLI](https://cli.github.com/) installed and authenticated against this repo. Issues get a `handoff-slice` label so they're easy to find later with `gh issue list --label handoff-slice`. The issue body is fully self-contained — no link back to anything local — and has the exact `/handoff-slice:issue-load <number>` command embedded right in the description, so anyone opening it on GitHub knows exactly how to pick it up.
 
@@ -53,6 +74,7 @@ Each saved file is a small, self-contained doc:
 
 **UUID**: a1b2c3d4-e5f6-...
 **Created**: 2026-07-13
+**Updated**: 2026-07-13
 **Topic**: Move rate limiting from middleware into the gateway layer
 **Status**: active
 
