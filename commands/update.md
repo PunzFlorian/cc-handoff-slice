@@ -21,7 +21,20 @@ Read the resolved file fully before changing anything.
 
 ## 2. Read the revision conventions
 
-Read `skills/handoff-slice/references/revision-format.md` and follow it. It defines the mark-don't-delete rule, the banner format and its retention, the date stamps, and the per-section revision questions. Don't invent your own format.
+Read `references/revision-format.md` **from inside this plugin's own directory** and follow it. It defines the mark-don't-delete rule, the banner format and its retention, the date stamps, and the per-section revision questions. Don't invent your own format.
+
+That path is relative to the plugin, not to the repo you're working in — which is almost never the same place. If a direct read fails, locate it:
+
+```
+find "$HOME/.claude/plugins" -path '*handoff-slice*/references/revision-format.md' 2>/dev/null | sort | tail -1
+```
+
+If it genuinely can't be found, say so rather than silently improvising a format, and fall back to these four rules — the irreducible core, not a substitute for the file:
+
+1. **Mark, don't delete.** Superseded content moves to Dead Ends carrying its disproof; superseded table rows get struck through, not removed.
+2. **Verify against repo reality**, not just the conversation.
+3. **Dated revision banner** in the first ten lines, one line per correction plus its evidence.
+4. **Date-stamp** new and changed content inline; fix Status and Next Steps before anything else.
 
 The rule that matters most: **superseded content is moved to Dead Ends with its disproof, never overwritten.** A reversal is the most valuable thing a handoff can carry.
 

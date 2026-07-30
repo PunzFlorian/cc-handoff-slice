@@ -25,7 +25,15 @@ gh issue view <number> --json title,body,state,url,updatedAt,comments
 
 ## 2. Read the revision conventions
 
-Read `skills/handoff-slice/references/revision-format.md` and follow it — mark-don't-delete, banner format and retention, date stamps, per-section questions. Same conventions as the local `/handoff-slice:update`, so both backends read identically.
+Read `references/revision-format.md` **from inside this plugin's own directory** and follow it — mark-don't-delete, banner format and retention, date stamps, per-section questions. Same conventions as the local `/handoff-slice:update`, so both backends read identically.
+
+That path is relative to the plugin, not to the repo you're working in. If a direct read fails, locate it:
+
+```
+find "$HOME/.claude/plugins" -path '*handoff-slice*/references/revision-format.md' 2>/dev/null | sort | tail -1
+```
+
+If it genuinely can't be found, say so rather than improvising a format, and fall back to the four core rules listed in `/handoff-slice:update` step 2.
 
 The rule that matters most: **superseded content moves to Dead Ends with its disproof, never overwritten.**
 
