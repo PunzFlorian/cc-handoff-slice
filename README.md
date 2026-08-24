@@ -26,8 +26,62 @@ Works in any repo after that — no per-project setup.
 | `/handoff-slice:issue-create <topic>` | Same extraction, but files it as a self-contained GitHub issue instead of a local file — for handing off to someone else, or a machine that doesn't have your local `.claude/handoffs/` |
 | `/handoff-slice:issue-load <issue number or url>` | Loads a slice previously filed as a GitHub issue |
 | `/handoff-slice:issue-update <issue number or url>` | Revises an issue-backed handoff in place |
+| `/handoff-slice:hints [on\|quiet\|off]` | Controls the automatic context-size hints (see [Configuration](#configuration)) |
 
 You can also just say things like "slice off this part about the auth bug" — the bundled skill routes natural phrasing to the right command.
+
+## Configuration
+
+**This plugin installs a `UserPromptSubmit` hook.** It's the one part that runs on its own rather than when you ask for something, so it's worth knowing what it does before it surprises you.
+
+The hook reads the current session's context size and, once that size is large enough to matter, tells the model. That's the whole job. Claude cannot see its own context size, so without it the model has no way to know that continuing this session has become the expensive option — and a handoff that never gets offered never gets taken. A statusline doesn't cover this: it renders to your terminal, not into the model's context.
+
+It is silent by default and stays silent for most sessions. Below the floor it prints nothing at all, which is deliberate — a prompt that appears when restarting wouldn't pay off is a prompt you learn to ignore, and then it's worthless when it's right.
+
+### Turning it off
+
+```
+/handoff-slice:hints off      # this repo
+/handoff-slice:hints quiet    # only the highest tier
+/handoff-slice:hints on       # default
+```
+
+Or set it yourself. Three layers, first hit wins:
+
+1. `HANDOFF_SLICE_HINTS=off` in the environment — including via `"env"` in `~/.claude/settings.json`, if you want it off everywhere with no files
+2. `<repo>/.claude/handoff-slice.json`
+3. `~/.claude/handoff-slice.json`
+
+```json
+{
+  "hints": "on",
+  "floor": 57000,
+  "tiers": { "notice": 100000, "offer": 200000, "urgent": 300000 }
+}
+```
+
+`off` silences the hook; it does not unregister it. Plugin hooks are registered as long as the plugin is enabled, so the script still runs each prompt, exits immediately and prints nothing — a few milliseconds of shell, nothing in context. Only disabling the plugin stops it running.
+
+### The thresholds, and why they're configurable
+
+The defaults come from a measured break-even model: the cost of continuing a session (every request re-reads the whole prefix) against the cost of restarting (write a slice, pay a fresh session's baseline, then re-read a much smaller prefix).
+
+| context | a slice + restart pays for itself after |
+|---------|------------------------------------------|
+| below the floor (~57k) | never — the fresh session's own baseline costs more than continuing |
+| ~100k | ~20 further turns |
+| ~200k | ~7 further turns |
+| ~300k and up | ~4 further turns |
+
+The shape is worth internalising even if you never touch the numbers: the cost of a long session is *requests × context*, and context only goes up. Cache reads are the cheapest token class per unit and still end up the largest line on a long session, precisely because every request pays for the whole prefix again.
+
+The floor is the part that surprises people. Restarting is not free — the new session pays its own baseline plus the slice before it does any work — so below roughly 57k it never wins, no matter how much work is left.
+
+They're configurable because the constants behind them are specific to one model's token pricing. A model with cheaper output moves the floor. Within a given model the numbers are robust: across a wide range of cache-read pricing assumptions the payback at high context moves only a couple of turns and the floor barely shifts, which is why they're stated plainly rather than recomputed at runtime.
+
+### If it misreads
+
+The hook degrades to silence, never to noise. No `jq`, no transcript, an unreadable config, a nonsense threshold value — each of those ends in printing nothing or falling back to the measured default. A context size it can't determine is treated as unknown, which is not the same as small.
 
 ## Keeping a slice current
 
