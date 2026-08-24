@@ -30,6 +30,52 @@ Works in any repo after that — no per-project setup.
 
 You can also just say things like "slice off this part about the auth bug" — the bundled skill routes natural phrasing to the right command.
 
+## Keeping a slice current
+
+A slice is a snapshot. On long-running work it outlives merges, and then it lies — its first Next Step is already done, or its plan was disproven days ago. A session that trusts the doc builds dead work.
+
+Two things address that:
+
+- **`load` verifies before acting.** Before working the first Next Step it checks `git log` since the slice was written, plus the state of any issue or PR that step depends on. If the step's already done or invalidated, it says so instead of building it.
+- **`update` revises in place**, deriving what changed from the conversation *and* from repo state — because the most damaging staleness is the kind nobody in the room mentioned. You don't have to tell it what moved.
+
+The rule `update` is built around: **mark, don't delete.**
+
+> A handoff's most valuable content is often a reversal — "we planned X, X turned out to be wrong, here's the measurement that disproved it." Overwrite the plan and you delete the warning, and the next session cheerfully re-derives the dead end.
+
+So superseded plan items move into **Dead Ends** carrying their disproof, superseded table rows get struck through rather than removed, a dated revision banner goes in the first ten lines, and new content is date-stamped so three-day-old reasoning is distinguishable from three-week-old. The full conventions live in [`skills/handoff-slice/references/revision-format.md`](skills/handoff-slice/references/revision-format.md) and are shared by both backends, so a revised local slice and a revised issue read identically.
+
+For issues, the **body is the single source of truth** — it's edited in place and always current. Since GitHub body edits are silent, `issue-update` also posts a short dated comment pointing at the body, but only when Status, Next Steps, or Dead Ends changed. The comment never contains a copy of the handoff, so there's no second aging version to confuse anyone, and `issue-load` reads the body only.
+
+Revisions are applied as targeted edits to the sections that changed, not as a wholesale rewrite of the
+file — a mature slice is large by design, and rewriting all of it to correct three sections costs in
+proportion to the slice rather than to the change. The revision banner and the `Updated` date are
+written last, so a revision interrupted partway leaves a file that is visibly un-stamped instead of
+silently half-written. (Issue-backed slices are the exception: the GitHub API replaces the whole body,
+so there is no partial write available there.)
+
+Neither command closes anything. If the work looks finished they'll say the slice is closeable and leave the act to you.
+
+`issue-create`/`issue-load` require the [`gh` CLI](https://cli.github.com/) installed and authenticated against this repo. Issues get a `handoff-slice` label so they're easy to find later with `gh issue list --label handoff-slice`. The issue body is fully self-contained — no link back to anything local — and has the exact `/handoff-slice:issue-load <number>` command embedded right in the description, so anyone opening it on GitHub knows exactly how to pick it up.
+
+## Restarting mid-session
+
+The reason to slice isn't only that a session is ending. It's that past a certain size, continuing one costs more than starting over with just the part you still need.
+
+Every request in a session re-reads the whole conversation so far, so cost grows with *requests × context*, and context only ever goes up. A restart resets the second term: write the topic into a slice, start fresh, load the slice. Above roughly 200k that pays for itself within about seven turns.
+
+The catch is that the moment to do it arrives mid-work, and nothing announces it. The plugin's hook watches for it and prompts a restart when the numbers say it's worth one — silently doing nothing the rest of the time. What you'll see is an offer in two parts, and both matter: update or create the slice, then `/clear` and load it. Slicing without restarting saves nothing.
+
+Whether enough work remains is your call — the model knows the context size, you know what's left. Decline and it won't ask again until the next threshold. See [Configuration](#configuration) for the thresholds and the off switch.
+
+## One slice at a time
+
+`load` takes one slice, and checks it against what you're actually doing before reading it.
+
+A loaded slice isn't consulted and released — it sits in the session's context and is paid for on every request that follows, whether anything reads it or not. So the cost of loading a slice you don't end up needing is not zero, it's the slice's size times the length of the session. The failure that costs the most isn't loading the wrong slice; it's loading a plausible one that never gets opened.
+
+If several slices match, `load` lists them with their sizes and asks which one the task needs. If the one you asked for is about something other than what you just described, it says so and asks before reading. Topic overlap isn't relevance — a slice can cover the right subsystem and still have nothing to say about today's problem.
+
 ## Configuration
 
 **This plugin installs a `UserPromptSubmit` hook.** It's the one part that runs on its own rather than when you ask for something, so it's worth knowing what it does before it surprises you.
@@ -82,52 +128,6 @@ They're configurable because the constants behind them are specific to one model
 ### If it misreads
 
 The hook degrades to silence, never to noise. No `jq`, no transcript, an unreadable config, a nonsense threshold value — each of those ends in printing nothing or falling back to the measured default. A context size it can't determine is treated as unknown, which is not the same as small.
-
-## Keeping a slice current
-
-A slice is a snapshot. On long-running work it outlives merges, and then it lies — its first Next Step is already done, or its plan was disproven days ago. A session that trusts the doc builds dead work.
-
-Two things address that:
-
-- **`load` verifies before acting.** Before working the first Next Step it checks `git log` since the slice was written, plus the state of any issue or PR that step depends on. If the step's already done or invalidated, it says so instead of building it.
-- **`update` revises in place**, deriving what changed from the conversation *and* from repo state — because the most damaging staleness is the kind nobody in the room mentioned. You don't have to tell it what moved.
-
-The rule `update` is built around: **mark, don't delete.**
-
-> A handoff's most valuable content is often a reversal — "we planned X, X turned out to be wrong, here's the measurement that disproved it." Overwrite the plan and you delete the warning, and the next session cheerfully re-derives the dead end.
-
-So superseded plan items move into **Dead Ends** carrying their disproof, superseded table rows get struck through rather than removed, a dated revision banner goes in the first ten lines, and new content is date-stamped so three-day-old reasoning is distinguishable from three-week-old. The full conventions live in [`skills/handoff-slice/references/revision-format.md`](skills/handoff-slice/references/revision-format.md) and are shared by both backends, so a revised local slice and a revised issue read identically.
-
-For issues, the **body is the single source of truth** — it's edited in place and always current. Since GitHub body edits are silent, `issue-update` also posts a short dated comment pointing at the body, but only when Status, Next Steps, or Dead Ends changed. The comment never contains a copy of the handoff, so there's no second aging version to confuse anyone, and `issue-load` reads the body only.
-
-Revisions are applied as targeted edits to the sections that changed, not as a wholesale rewrite of the
-file — a mature slice is large by design, and rewriting all of it to correct three sections costs in
-proportion to the slice rather than to the change. The revision banner and the `Updated` date are
-written last, so a revision interrupted partway leaves a file that is visibly un-stamped instead of
-silently half-written. (Issue-backed slices are the exception: the GitHub API replaces the whole body,
-so there is no partial write available there.)
-
-Neither command closes anything. If the work looks finished they'll say the slice is closeable and leave the act to you.
-
-`issue-create`/`issue-load` require the [`gh` CLI](https://cli.github.com/) installed and authenticated against this repo. Issues get a `handoff-slice` label so they're easy to find later with `gh issue list --label handoff-slice`. The issue body is fully self-contained — no link back to anything local — and has the exact `/handoff-slice:issue-load <number>` command embedded right in the description, so anyone opening it on GitHub knows exactly how to pick it up.
-
-## Restarting mid-session
-
-The reason to slice isn't only that a session is ending. It's that past a certain size, continuing one costs more than starting over with just the part you still need.
-
-Every request in a session re-reads the whole conversation so far, so cost grows with *requests × context*, and context only ever goes up. A restart resets the second term: write the topic into a slice, start fresh, load the slice. Above roughly 200k that pays for itself within about seven turns.
-
-The catch is that the moment to do it arrives mid-work, and nothing announces it. The plugin's hook watches for it and prompts a restart when the numbers say it's worth one — silently doing nothing the rest of the time. What you'll see is an offer in two parts, and both matter: update or create the slice, then `/clear` and load it. Slicing without restarting saves nothing.
-
-Whether enough work remains is your call — the model knows the context size, you know what's left. Decline and it won't ask again until the next threshold. See [Configuration](#configuration) for the thresholds and the off switch.
-
-## One slice at a time
-
-`load` takes one slice, and checks it against what you're actually doing before reading it.
-
-A loaded slice isn't consulted and released — it sits in the session's context and is paid for on every request that follows, whether anything reads it or not. So the cost of loading a slice you don't end up needing is not zero, it's the slice's size times the length of the session. The failure that costs the most isn't loading the wrong slice; it's loading a plausible one that never gets opened.
-
-If several slices match, `load` lists them with their sizes and asks which one the task needs. If the one you asked for is about something other than what you just described, it says so and asks before reading. Topic overlap isn't relevance — a slice can cover the right subsystem and still have nothing to say about today's problem.
 
 ## Example
 
