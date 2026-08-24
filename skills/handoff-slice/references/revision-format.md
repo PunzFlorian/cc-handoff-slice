@@ -15,6 +15,24 @@ So when something is no longer true:
 
 A slice that grows a Dead Ends section over three revisions is working correctly. A slice whose Remaining Work quietly shrank is losing information.
 
+## Where superseded content lands
+
+Retention and loading are separate concerns. Slices carry an archive marker:
+
+```
+<!-- ARCHIVE — retained, not loaded. grep this section; don't read it whole. -->
+```
+
+Below it sit Dead Ends and Code Refs; `load` reads only the head above it. So a revision that supersedes something **moves it below the marker** — that is the normal path, and it is not a deletion:
+
+- A disproven plan item moves from Remaining Work into **Dead Ends**, below the marker, carrying its disproof.
+- A struck-through table row stays in its table if the table is in the head, but a table that has accumulated more struck rows than live ones should move wholesale into the archive with the live rows lifted back into a fresh table in the head.
+- A superseded code snippet moves below the marker; the current one takes its place in **Code Refs**.
+
+The head answers "what do I do next"; the archive answers "what was already tried and why did it fail". Both are kept forever. Only the first is read by default.
+
+A slice without a marker predates the split. Add one while revising it, and say so in the banner — it is a real improvement to the next load, not a cosmetic edit.
+
 ## Verify against reality, not just the conversation
 
 The slice may be stale for reasons nobody in the current conversation mentioned. Before revising, check actual state:

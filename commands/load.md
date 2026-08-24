@@ -13,13 +13,39 @@ Otherwise look in `.claude/handoffs/` for a file whose name matches `$ARGUMENTS`
 
 - No match: say so, suggest `/handoff-slice:list`.
 - Multiple matches: show them (uuid + slug + topic) and ask the user to pick one.
-- Exactly one match: read it fully.
+- Exactly one match: read its **head** (see below).
+
+## 1b. Read the head, not the archive
+
+Slices carry an archive marker separating the part a session needs from the part it retains:
+
+```
+<!-- ARCHIVE — retained, not loaded. grep this section; don't read it whole. -->
+```
+
+Read only up to it:
+
+```
+sed -n '1,/^<!-- ARCHIVE/p' <file>
+```
+
+Everything below the marker — Dead Ends, Code Refs, superseded rows and snippets — stays on disk unread. It is the part that grows with every revision, and loading it means paying for the whole archive on every request of the session when only the head decides what to do next.
+
+**Slices written before the marker existed have none**, and the command above then returns the whole file. That is the correct fallback, but say so out loud: *"no archive marker — loaded the whole file (N KB)."* Otherwise an old slice looks as cheap as a split one while costing several times more, and nobody knows to run `/handoff-slice:update` to split it.
 
 ## 2. Summarize, don't dump
 
 Give the user a short summary — topic, status, and the first item under **Next Steps** — instead of printing the whole file.
 
-Prominently surface **Dead Ends** and **Gotchas** so they aren't repeated or missed.
+Surface **Gotchas** prominently; they're in the head precisely because they matter before work starts.
+
+For the archive, surface a **pointer, not the content**: say it exists, how big it is, and how to reach it —
+
+```
+grep -n '<term>' <file>
+```
+
+Read below the marker only when a Next Step actually touches something it covers — an approach that may already be a dead end, a signature you're about to call. That's a deliberate, targeted read, not part of loading.
 
 ## 3. Check the slice isn't stale
 

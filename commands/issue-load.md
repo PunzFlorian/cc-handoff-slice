@@ -17,13 +17,28 @@ gh issue view $ARGUMENTS --json title,body,state,url
 
 This works whether `$ARGUMENTS` is a bare number or a full issue URL.
 
-## 2. Summarize, don't dump
+## 2. Read the head, not the archive
+
+Handoff issues carry a collapsed archive block:
+
+```html
+<details>
+<summary><b>Archive</b> — dead ends and reference detail...
+```
+
+Everything from `<details>` onward is retained but **not** loaded. Strip it before summarizing — it is the part that grows with every revision, and only the head above it decides what to do next.
+
+Issues filed before the archive block existed have none. The whole body is then the head, which is correct — but say so, so a large old handoff doesn't read as cheap as a split one.
+
+Read the **body only** — comments on a handoff issue are revision notifications, not content, and the body is always the current version.
+
+## 2b. Summarize, don't dump
 
 Give the user a short summary — title, open/closed state, and the first item under **Next Steps** — instead of printing the whole issue body.
 
-Prominently surface **Dead Ends** and **Gotchas** so they aren't repeated or missed.
+Surface **Gotchas** prominently; they're above the archive block precisely because they matter before work starts.
 
-Read the **body only** — comments on a handoff issue are revision notifications, not content, and the body is always the current version.
+For the archive, surface a **pointer, not the content**: say it exists and that it holds the dead ends and reference detail. Read inside it only when a Next Step actually touches something it covers — an approach that may already be disproven, a signature you're about to call.
 
 ## 3. Check the issue isn't stale
 

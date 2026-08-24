@@ -41,9 +41,6 @@ Same section structure as the local template, but **no header block and no `Stat
 ## Remaining Work
 - ...
 
-## Dead Ends
-Things tried and abandoned, and why. "None" if nothing failed — never omit this section.
-
 ## Decisions Made
 | Choice | Why |
 |--------|-----|
@@ -56,9 +53,6 @@ Things tried and abandoned, and why. "None" if nothing failed — never omit thi
 | File | Why it matters |
 |------|-----------------|
 
-## Code Refs
-Actual signatures, snippets, or request/response shapes the next person needs.
-
 ## Next Steps
 1. Specific, actionable, with an expected outcome per step.
 
@@ -70,7 +64,26 @@ Non-obvious traps, or things that look wrong but are intentional.
 
 ## Follow-up Skills
 Skills the next session should invoke to continue — omit if none.
+
+<details>
+<summary><b>Archive</b> — dead ends and reference detail. Retained in full; not loaded by <code>issue-load</code>.</summary>
+
+## Dead Ends
+Things tried and abandoned, and why. "None" if nothing failed — never omit this section.
+
+## Code Refs
+Actual signatures, snippets, or request/response shapes the next person needs.
+
+</details>
 ```
+
+### The archive block
+
+An issue has exactly one body, so the split that a local slice makes with a marker line is made here with a collapsed `<details>` block — same boundary, same rule, and it reads correctly to a human on GitHub, who gets a closed disclosure triangle instead of a wall of superseded detail.
+
+Everything inside it is retained in full and **not** read by `issue-load`. Dead Ends is the highest-value content the handoff carries and it grows with every revision; keeping it out of the default read is what lets the retention rule stay absolute while the load cost stays flat.
+
+Target **under ~20 KB above the `<details>` block**. If the head runs past that, move detail inside the block — never reach the target by leaving something out.
 
 ## 5. Create the issue
 
