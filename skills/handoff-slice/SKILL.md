@@ -35,6 +35,14 @@ A loaded slice is a snapshot, not the truth. Work lands after a slice is written
 
 Check whether `.claude/handoffs/` exists and has entries. If the user's first message suggests they're picking up earlier work, mention the relevant slice(s) and offer to load one — don't load automatically.
 
+## One slice at a time
+
+Load **one** slice into a session. This holds everywhere, not just inside `load`.
+
+A loaded slice isn't context that gets consulted and released — it stays in the prefix and is charged on every subsequent request, used or not. Two slices is that cost twice, and in practice the second one is usually the one nobody opens: it matched the topic, it looked useful, and the session's actual work turned out to be somewhere else.
+
+So when more than one slice looks relevant, name them with their sizes and let the user pick the one the current task needs. If the work genuinely moves onto the second topic later, load it then — by which point the first is likely worth updating and dropping anyway.
+
 ## Proactive suggestions
 
 If a distinct sub-topic of the conversation looks finished or is about to be abandoned in favor of something else, offer to slice it off before it's lost: "Want me to save a handoff for this part before we move on?"
