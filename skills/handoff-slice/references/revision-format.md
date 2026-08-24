@@ -99,3 +99,18 @@ Report which sections you checked and found unchanged — "verified, no change" 
 The line that gets confused: **undecided is not blocked.** A slice whose next step is "choose the capture point" is `active` — the choice is yours to make. It's `blocked` only if the choice belongs to someone else.
 
 A revision may set `Status` to `ready-to-close`. It may **not** act on that: never delete the file, never `gh issue close`. Say the slice looks closeable and leave the act to the user.
+
+## Applying the revision
+
+Default to targeted `Edit`s, one per section that actually changed. A revision usually touches Status, Next Steps and two or three other sections; rewriting the whole file to change those costs output tokens proportional to the *slice*, not to the *change*, and a mature slice is large by design — the retention rule above guarantees it grows.
+
+Reach for a full `Write` only when more than half the sections change. That happens, and it's the right call when it does — don't contort a wholesale rewrite into thirty edits.
+
+**Atomicity comes from ordering, not from `Write`.** The reason to prefer one big write is that a revision abandoned halfway leaves the file inconsistent. Ordering solves that more cheaply:
+
+1. Edit the content sections first — Dead Ends, Decisions, Next Steps, Snapshot, and the rest.
+2. Edit the revision banner and the header's `Updated` field **last**.
+
+A revision that dies partway then leaves a file whose content has moved but whose banner and `Updated` date have not — visibly un-stamped, and the next reader sees a date that doesn't match the content. That's a loud failure. A `Write` that dies partway is a silently truncated file, which is worse.
+
+If you do reach for `Write`, the same rule applies to the assembled content: build the whole body first, stamp the banner and `Updated` into it last.

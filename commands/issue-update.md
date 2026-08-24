@@ -72,6 +72,12 @@ If the work now looks finished, say so in the banner (`Looks ready to close`) â€
 
 ## 5. Write it back
 
+The conventions file prefers targeted edits over wholesale rewrites, but that preference does **not**
+apply here: `gh issue edit --body-file` replaces the entire body, so there is no partial write to
+reach for. Assembling the full body is correct on this backend. Keep it small the same way the body
+was kept small when it was created â€” by leaving archived detail in the archive block rather than by
+retaining less.
+
 Write the full new body to a temp file, then:
 
 ```
