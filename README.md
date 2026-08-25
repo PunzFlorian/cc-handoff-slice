@@ -94,9 +94,6 @@ Each saved file is a small, self-contained doc:
 ## Remaining Work
 ...
 
-## Dead Ends
-...
-
 ## Decisions Made
 ...
 
@@ -104,9 +101,6 @@ Each saved file is a small, self-contained doc:
 ...
 
 ## Relevant Files
-...
-
-## Code Refs
 ...
 
 ## Next Steps
@@ -120,9 +114,27 @@ Each saved file is a small, self-contained doc:
 
 ## Follow-up Skills
 ...
+
+<!-- ARCHIVE — retained, not loaded. grep this section; don't read it whole. -->
+
+## Dead Ends
+...
+
+## Code Refs
+...
 ```
 
 Only sections with real content are included (except Dead Ends, which is always present — "None" if nothing failed). Secrets and credentials are redacted before writing, and content already captured elsewhere (specs, PRs, commits, issues) is referenced by path or URL instead of duplicated.
+
+### Head and archive
+
+The marker line splits what a session **reads** from what the slice **keeps**. `load` reads only the head above it; Dead Ends, Code Refs, and superseded rows and snippets sit below, retained in full and read only when something actually needs them.
+
+That split exists because the two halves have opposite growth curves. The head answers *what do I do next*, and stays roughly constant — revisions replace its content. The archive answers *what was already tried and why it failed*, and only ever grows, because a revision never deletes a dead end. Load the whole file and every session pays for the entire history of the work on every request; load the head and it pays for the current state.
+
+Retention is unchanged by this. Dead Ends is the reason a slice beats a summary — it is what stops the next session confidently re-deriving something that was already measured and rejected — so the fix for its size is to stop *loading* it by default, never to keep less of it. Aim for under ~20 KB above the marker, and reach that by moving detail below the line rather than by dropping it.
+
+Issue-backed handoffs make the same split with a collapsed `<details>` block, since an issue has only one body. Slices written before the marker existed have none; they load whole, and `load` says so rather than letting an expensive old slice look cheap.
 
 `issue-create` uses the same sections minus the header block and `Status` field (the issue's own title, creation date, and open/closed state already cover that), with a resume-command block inserted at the very top:
 

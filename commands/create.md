@@ -42,9 +42,6 @@ What this slice of work is trying to achieve, in 1-2 sentences.
 ## Remaining Work
 - ...
 
-## Dead Ends
-Approaches tried and abandoned within this slice, and why. "None" if nothing failed.
-
 ## Decisions Made
 | Choice | Why |
 |--------|-----|
@@ -57,9 +54,6 @@ Approaches tried and abandoned within this slice, and why. "None" if nothing fai
 | File | Why it matters |
 |------|-----------------|
 
-## Code Refs
-Actual signatures, snippets, or request/response shapes the next session needs.
-
 ## Next Steps
 1. Specific, actionable, with an expected outcome per step.
 
@@ -71,7 +65,33 @@ Non-obvious traps, or things that look wrong but are intentional.
 
 ## Follow-up Skills
 Skills the next session should invoke to continue, if any — omit if none.
+
+<!-- ARCHIVE — retained, not loaded. grep this section; don't read it whole. -->
+
+## Dead Ends
+Approaches tried and abandoned within this slice, and why. "None" if nothing failed.
+
+## Code Refs
+Actual signatures, snippets, or request/response shapes the next session needs.
 ```
+
+### The archive marker
+
+Everything below the marker is **retained in full and not loaded by default**. `load` reads only the head, then tells the next session the archive exists and how to grep it.
+
+This is a change to what gets *read*, never to what gets *kept*. Dead Ends is the highest-value content a slice carries — it is what stops a future session re-deriving a disproven approach — and it is also the section that grows without bound, because revisions only ever add to it. Splitting the two lets the retention rule stay absolute while the load cost stays flat.
+
+What goes below the marker: **Dead Ends**, **Code Refs**, and later, on revision, struck-through table rows and superseded snippets.
+
+What stays in the head: everything a session needs to decide what to do next — Objective, Snapshot, Remaining Work, Next Steps, Prerequisites, Gotchas, Relevant Files, Decisions Made, Follow-up Skills.
+
+Gotchas stays in the head deliberately. A trap that is still live is not archive material; it's something the next session needs before it starts typing.
+
+### Keep the head small
+
+Target **under ~20 KB above the marker** — roughly 5k tokens, which is what a load should cost. If the head is heading past that, move detail below the marker; never hit the target by leaving something out. A slice that omits a dead end to stay small has traded its main advantage over a summary for nothing.
+
+The target is a guide, not a hard cap — a genuinely large piece of work can justify a larger head. Say so to the user rather than silently truncating.
 
 **Status** is not a mood — `load` and `list` present the slice differently based on it, so pick by these definitions:
 
