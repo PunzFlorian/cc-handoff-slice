@@ -46,6 +46,13 @@ So superseded plan items move into **Dead Ends** carrying their disproof, supers
 
 For issues, the **body is the single source of truth** — it's edited in place and always current. Since GitHub body edits are silent, `issue-update` also posts a short dated comment pointing at the body, but only when Status, Next Steps, or Dead Ends changed. The comment never contains a copy of the handoff, so there's no second aging version to confuse anyone, and `issue-load` reads the body only.
 
+Revisions are applied as targeted edits to the sections that changed, not as a wholesale rewrite of the
+file — a mature slice is large by design, and rewriting all of it to correct three sections costs in
+proportion to the slice rather than to the change. The revision banner and the `Updated` date are
+written last, so a revision interrupted partway leaves a file that is visibly un-stamped instead of
+silently half-written. (Issue-backed slices are the exception: the GitHub API replaces the whole body,
+so there is no partial write available there.)
+
 Neither command closes anything. If the work looks finished they'll say the slice is closeable and leave the act to you.
 
 `issue-create`/`issue-load` require the [`gh` CLI](https://cli.github.com/) installed and authenticated against this repo. Issues get a `handoff-slice` label so they're easy to find later with `gh issue list --label handoff-slice`. The issue body is fully self-contained — no link back to anything local — and has the exact `/handoff-slice:issue-load <number>` command embedded right in the description, so anyone opening it on GitHub knows exactly how to pick it up.

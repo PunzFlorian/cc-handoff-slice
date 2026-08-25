@@ -1,0 +1,4 @@
+# Handoff slices are working notes for whoever wrote them, not repo content.
+# They routinely reference paths, projects, and measurements from outside this
+# repo, so they stay local.
+.claude/handoffs/

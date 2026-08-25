@@ -71,7 +71,10 @@ Also:
 - Insert the dated revision banner directly under the header block, following the retention rule (newest two blocks expanded, older dates collapsed to one line).
 - Redact secrets in anything newly added, same as `create`.
 
-Write the whole file back with `Write` — don't leave it half-edited.
+Apply it with targeted `Edit`s — one per section that actually changed — and stamp the banner and
+`Updated` field **last**, so a revision that dies partway is visibly un-stamped rather than silently
+half-written. Full `Write` only when more than half the sections change. See **Applying the revision**
+in the conventions file.
 
 ## 5. Report
 
