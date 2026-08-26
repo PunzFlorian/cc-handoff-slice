@@ -12,8 +12,20 @@ If `$ARGUMENTS` is empty, tell the user to run `/handoff-slice:list` to see avai
 Otherwise look in `.claude/handoffs/` for a file whose name matches `$ARGUMENTS` as a uuid prefix or slug substring.
 
 - No match: say so, suggest `/handoff-slice:list`.
-- Multiple matches: show them (uuid + slug + topic) and ask the user to pick one.
+- Multiple matches: show them (uuid + slug + topic + head size) and ask the user to pick **one**.
 - Exactly one match: read its **head** (see below).
+
+## 1a. One slice, and only if it's relevant
+
+**Load one slice per session.** If the user names several, don't load them all — say what each one costs and ask which the task at hand actually needs. A second slice is not additive context; it is a fixed cost charged on every request for the rest of the session, whether or not anything reads it.
+
+Then check the one slice against the work. Before reading it, state its **Topic** next to the task the user just described, and if they don't overlap, say so instead of loading:
+
+> This slice is about the export pipeline; you've asked about address parsing. Loading it costs ~6k tokens on every request from here. Load it anyway, or should I leave it?
+
+Topic match is not relevance. A slice can be about the same subsystem and still have nothing to say about the current task, and a slice that goes unread costs exactly as much as one that gets used — its size, times every request in the session. That is the expensive failure mode: not loading the wrong slice, but loading a plausible one that never gets opened.
+
+The relevance question is cheap and it belongs before the read, not after.
 
 ## 1b. Read the head, not the archive
 

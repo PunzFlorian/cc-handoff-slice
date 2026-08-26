@@ -57,6 +57,14 @@ Neither command closes anything. If the work looks finished they'll say the slic
 
 `issue-create`/`issue-load` require the [`gh` CLI](https://cli.github.com/) installed and authenticated against this repo. Issues get a `handoff-slice` label so they're easy to find later with `gh issue list --label handoff-slice`. The issue body is fully self-contained — no link back to anything local — and has the exact `/handoff-slice:issue-load <number>` command embedded right in the description, so anyone opening it on GitHub knows exactly how to pick it up.
 
+## One slice at a time
+
+`load` takes one slice, and checks it against what you're actually doing before reading it.
+
+A loaded slice isn't consulted and released — it sits in the session's context and is paid for on every request that follows, whether anything reads it or not. So the cost of loading a slice you don't end up needing is not zero, it's the slice's size times the length of the session. The failure that costs the most isn't loading the wrong slice; it's loading a plausible one that never gets opened.
+
+If several slices match, `load` lists them with their sizes and asks which one the task needs. If the one you asked for is about something other than what you just described, it says so and asks before reading. Topic overlap isn't relevance — a slice can cover the right subsystem and still have nothing to say about today's problem.
+
 ## Example
 
 ```
