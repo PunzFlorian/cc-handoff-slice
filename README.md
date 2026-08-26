@@ -111,6 +111,16 @@ Neither command closes anything. If the work looks finished they'll say the slic
 
 `issue-create`/`issue-load` require the [`gh` CLI](https://cli.github.com/) installed and authenticated against this repo. Issues get a `handoff-slice` label so they're easy to find later with `gh issue list --label handoff-slice`. The issue body is fully self-contained — no link back to anything local — and has the exact `/handoff-slice:issue-load <number>` command embedded right in the description, so anyone opening it on GitHub knows exactly how to pick it up.
 
+## Restarting mid-session
+
+The reason to slice isn't only that a session is ending. It's that past a certain size, continuing one costs more than starting over with just the part you still need.
+
+Every request in a session re-reads the whole conversation so far, so cost grows with *requests × context*, and context only ever goes up. A restart resets the second term: write the topic into a slice, start fresh, load the slice. Above roughly 200k that pays for itself within about seven turns.
+
+The catch is that the moment to do it arrives mid-work, and nothing announces it. The plugin's hook watches for it and prompts a restart when the numbers say it's worth one — silently doing nothing the rest of the time. What you'll see is an offer in two parts, and both matter: update or create the slice, then `/clear` and load it. Slicing without restarting saves nothing.
+
+Whether enough work remains is your call — the model knows the context size, you know what's left. Decline and it won't ask again until the next threshold. See [Configuration](#configuration) for the thresholds and the off switch.
+
 ## One slice at a time
 
 `load` takes one slice, and checks it against what you're actually doing before reading it.
