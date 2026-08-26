@@ -1,0 +1,15 @@
+{
+  "description": "handoff-slice: reports context size to the model once it passes the point where slicing out and restarting is cheaper than continuing. Silent below that, and disableable with /handoff-slice:hints off.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/restart-advisor.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
