@@ -28,12 +28,14 @@ CWD=$(printf '%s' "$PAYLOAD" | jq -r '.cwd // .workspace.project_dir // empty' 2
 CONF_USER="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/handoff-slice.json"
 CONF_PROJ="$CWD/.claude/handoff-slice.json"
 
-# cfg <jq-path> <default> — project config wins over user config wins over default.
+# cfg <jq-path> <default> — project config wins over user config wins over
+# default. The path may use $m, bound to the session's model id, so a
+# per-model key can be looked up without splicing the id into jq source.
 cfg() {
   local f v
   for f in "$CONF_PROJ" "$CONF_USER"; do
     [ -f "$f" ] || continue
-    v=$(jq -r "$1 // empty" "$f" 2>/dev/null)
+    v=$(jq -r --arg m "${MODEL:-}" "$1 // empty" "$f" 2>/dev/null)
     [ -n "$v" ] && { printf '%s' "$v"; return 0; }
   done
   printf '%s' "$2"
@@ -47,28 +49,47 @@ HINTS="${HANDOFF_SLICE_HINTS:-$(cfg '.hints' on)}"
 case "$HINTS" in off|false|0|no) exit 0 ;; esac
 case "$HINTS" in on|quiet) ;; *) HINTS=on ;; esac
 
-# Thresholds come from a measured break-even model and are stated in the README.
-# They are configurable because the constants behind them are specific to one
-# model's token pricing; a model with cheaper output moves the floor.
-FLOOR=$(num "$(cfg '.floor' 57000)" 57000)
-T_NOTICE=$(num "$(cfg '.tiers.notice' 100000)" 100000)
-T_OFFER=$(num "$(cfg '.tiers.offer' 200000)" 200000)
-T_URGENT=$(num "$(cfg '.tiers.urgent' 300000)" 300000)
-
 ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
 SIZER="$ROOT/scripts/context-size.sh"
 [ -f "$SIZER" ] || exit 0
 
-CTX=$(printf '%s' "$PAYLOAD" | bash "$SIZER" 2>/dev/null)
+read -r CTX MODEL <<EOF_SIZE
+$(printf '%s' "$PAYLOAD" | bash "$SIZER" --model 2>/dev/null)
+EOF_SIZE
 CTX=$(num "$CTX" 0)
+MODEL="${MODEL:-unknown}"
+
+# Thresholds come from a break-even model (README). They differ per model
+# because the price ratio between cache reads and writing a slice differs, and
+# so does a fresh session's starting context. Opus 5.5 reads cache at half the
+# old ratio and starts ~20k lighter; the two partly cancel, and its tiers land
+# higher. The turn counts are what the hint tells the model; a notice of 0
+# switches that tier off.
+case "$MODEL" in
+  claude-opus-5-5*)
+    D_FLOOR=38000;  D_NOTICE=200000; D_OFFER=300000; D_URGENT=500000
+    P_NOTICE=10;    P_OFFER=7;       P_URGENT=5 ;;
+  *)
+    D_FLOOR=57000;  D_NOTICE=100000; D_OFFER=200000; D_URGENT=300000
+    P_NOTICE=20;    P_OFFER=7;       P_URGENT=4 ;;
+esac
+
+# Per file, a key for this model beats the flat key that covers every model.
+FLOOR=$(num "$(cfg '.models[$m].floor // .floor' "$D_FLOOR")" "$D_FLOOR")
+T_NOTICE=$(num "$(cfg '.models[$m].tiers.notice // .tiers.notice' "$D_NOTICE")" "$D_NOTICE")
+T_OFFER=$(num "$(cfg '.models[$m].tiers.offer // .tiers.offer' "$D_OFFER")" "$D_OFFER")
+T_URGENT=$(num "$(cfg '.models[$m].tiers.urgent // .tiers.urgent' "$D_URGENT")" "$D_URGENT")
 
 # 0 means the size could not be read. Unknown is not small — say nothing.
 [ "$CTX" -gt 0 ] || exit 0
 [ "$CTX" -ge "$FLOOR" ] || exit 0
 
-if   [ "$CTX" -ge "$T_URGENT" ]; then TIER=3
-elif [ "$CTX" -ge "$T_OFFER"  ]; then TIER=2
-elif [ "$CTX" -ge "$T_NOTICE" ]; then TIER=1
+# at <threshold> — reached, and not switched off with 0.
+at() { [ "$1" -gt 0 ] && [ "$CTX" -ge "$1" ]; }
+
+if   at "$T_URGENT"; then TIER=3
+elif at "$T_OFFER";  then TIER=2
+elif at "$T_NOTICE"; then TIER=1
 else TIER=0
 fi
 [ "$TIER" -gt 0 ] || exit 0
@@ -88,9 +109,9 @@ fi
 CTX_K=$(( CTX / 1000 ))
 
 case "$TIER" in
-  1) MSG="handoff-slice: context is ~${CTX_K}k. Slicing out a handoff and restarting in a fresh session pays for itself only if more than ~20 turns of work remain here. Mention it if that's the case; otherwise say nothing." ;;
-  2) MSG="handoff-slice: context is ~${CTX_K}k. Slicing out a handoff and restarting pays for itself after ~7 further turns. Offer it: update or create the slice, then /clear and load it. Both halves, or it saves nothing." ;;
-  3) MSG="handoff-slice: context is ~${CTX_K}k. Slicing out a handoff and restarting pays for itself after ~4 further turns, and every further turn here is charged against the full prefix. Offer it now: update or create the slice, then /clear and load it. Both halves, or it saves nothing." ;;
+  1) MSG="handoff-slice: context is ~${CTX_K}k. Slicing out a handoff and restarting in a fresh session pays for itself only if more than ~${P_NOTICE} turns of work remain here. Mention it if that's the case; otherwise say nothing." ;;
+  2) MSG="handoff-slice: context is ~${CTX_K}k. Slicing out a handoff and restarting pays for itself after ~${P_OFFER} further turns, and recall over a long context degrades as it grows. Offer it: update or create the slice, then /clear and load it. Both halves, or it saves nothing." ;;
+  3) MSG="handoff-slice: context is ~${CTX_K}k. Slicing out a handoff and restarting pays for itself after ~${P_URGENT} further turns; every further turn here is charged against the full prefix, and recall at this length is past where it holds up. Offer it now: update or create the slice, then /clear and load it. Both halves, or it saves nothing." ;;
 esac
 
 SEEN="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.handoff-slice-hints-seen"
