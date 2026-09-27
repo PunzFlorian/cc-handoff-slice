@@ -28,15 +28,17 @@ Activate when the user says things like: "hand off", "slice this off", "save thi
 
 Slicing is not only an end-of-session ritual. Past a certain context size, continuing a session is the expensive option and a slice-and-restart pays for itself in a handful of turns — but that moment arrives in the middle of the work, not at the end of it, and nothing about it is self-announcing.
 
-A `UserPromptSubmit` hook reports the current context size when it becomes relevant, prefixed `handoff-slice:`. That line is the trigger. Act on it:
+A `UserPromptSubmit` hook reports the current context size when it becomes relevant, prefixed `handoff-slice:`. That line is the trigger, and it carries the payback for this session's model — go by its numbers. The thresholds differ per model because pricing and a fresh session's starting size do:
 
-| context | offer a restart when |
-|---------|----------------------|
-| below ~57k | **never** — say nothing |
-| ~57k–100k | say nothing |
-| ~100k–200k | more than ~20 turns of work remain |
-| ~200k–300k | more than ~7 turns remain — offer it |
-| ~300k and up | more than ~4 turns remain — offer it now |
+| tier | Opus 5.5 | other models | offer a restart when |
+|------|----------|--------------|----------------------|
+| floor | below ~38k | below ~57k | **never** — say nothing |
+| — | up to ~200k | up to ~100k | say nothing |
+| 1 notice | ~200k–300k | ~100k–200k | more than ~10 (Opus 5.5) / ~20 turns of work remain |
+| 2 offer | ~300k–500k | ~200k–300k | more than ~7 turns remain — offer it |
+| 3 urgent | ~500k and up | ~300k and up | more than ~5 / ~4 turns remain — offer it now |
+
+From the offer tier on, a long context is also a quality problem, not only a cost one: recall degrades as the prefix grows. Say so when you offer.
 
 **The offer is always two steps.** A slice without a restart saves nothing at all; it just adds the cost of writing it.
 
@@ -51,9 +53,9 @@ Say both, in that order, and say what it's worth: at high context every further 
 echo <tier> > "${TMPDIR:-/tmp}/handoff-slice-<session_id>.declined-tier"
 ```
 
-where tier is 1 for the ~100k band, 2 for ~200k, 3 for ~300k+. The hook stays quiet until the next band up.
+where tier is the number in the table above (1 notice, 2 offer, 3 urgent). The hook stays quiet until the next tier up.
 
-**The floor is a hard rule.** Below ~57k a restart costs more than continuing, no matter how much work is left — the fresh session pays its own baseline plus the slice before doing anything. Never offer below it, including when the user asks about cost directly. Offering when the advice is wrong is how the whole mechanism gets tuned out.
+**The floor is a hard rule.** Below it (~38k on Opus 5.5, ~57k otherwise) a restart costs more than continuing, no matter how much work is left — the fresh session pays its own baseline plus the slice before doing anything. Never offer below it, including when the user asks about cost directly. Offering when the advice is wrong is how the whole mechanism gets tuned out.
 
 **If the hint never appears**, the hook may be off (`/handoff-slice:hints`) or unable to read the transcript. You can check once, by hand, when the signs of a long session show up — a compaction notice, or the user asking about cost or speed:
 

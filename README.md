@@ -62,7 +62,7 @@ Neither command closes anything. If the work looks finished they'll say the slic
 
 The reason to slice isn't only that a session is ending. It's that past a certain size, continuing one costs more than starting over with just the part you still need.
 
-Every request in a session re-reads the whole conversation so far, so cost grows with *requests × context*, and context only ever goes up. A restart resets the second term: write the topic into a slice, start fresh, load the slice. Above roughly 200k that pays for itself within about seven turns.
+Every request in a session re-reads the whole conversation so far, so cost grows with *requests × context*, and context only ever goes up. A restart resets the second term: write the topic into a slice, start fresh, load the slice. On Opus 5.5, above roughly 300k that pays for itself within about seven turns.
 
 The catch is that the moment to do it arrives mid-work, and nothing announces it. The plugin's hook watches for it and prompts a restart when the numbers say it's worth one — silently doing nothing the rest of the time. What you'll see is an offer in two parts, and both matter: update or create the slice, then `/clear` and load it. Slicing without restarting saves nothing.
 
@@ -101,29 +101,29 @@ Or set it yourself. Three layers, first hit wins:
 ```json
 {
   "hints": "on",
-  "floor": 57000,
-  "tiers": { "notice": 100000, "offer": 200000, "urgent": 300000 }
+  "floor": 38000,
+  "tiers": { "notice": 200000, "offer": 300000, "urgent": 500000 }
 }
 ```
 
 `off` silences the hook; it does not unregister it. Plugin hooks are registered as long as the plugin is enabled, so the script still runs each prompt, exits immediately and prints nothing — a few milliseconds of shell, nothing in context. Only disabling the plugin stops it running.
 
-### The thresholds, and why they're configurable
+### The thresholds
 
-The defaults come from a measured break-even model: the cost of continuing a session (every request re-reads the whole prefix) against the cost of restarting (write a slice, pay a fresh session's baseline, then re-read a much smaller prefix).
+The defaults come from a break-even model: the cost of continuing a session (every request re-reads the whole prefix) against the cost of restarting (write a slice, pay a fresh session's baseline, then re-read a much smaller prefix). On Opus 5.5:
 
 | context | a slice + restart pays for itself after |
 |---------|------------------------------------------|
-| below the floor (~57k) | never — the fresh session's own baseline costs more than continuing |
-| ~100k | ~20 further turns |
-| ~200k | ~7 further turns |
-| ~300k and up | ~4 further turns |
+| below the floor (~38k) | never — the fresh session's own baseline costs more than continuing |
+| ~200k | ~10 further turns |
+| ~300k | ~7 further turns |
+| ~500k and up | ~5 further turns |
 
 The shape is worth internalising even if you never touch the numbers: the cost of a long session is *requests × context*, and context only goes up. Cache reads are the cheapest token class per unit and still end up the largest line on a long session, precisely because every request pays for the whole prefix again.
 
-The floor is the part that surprises people. Restarting is not free — the new session pays its own baseline plus the slice before it does any work — so below roughly 57k it never wins, no matter how much work is left.
+Cost isn't the only reason. Recall over a long context degrades as it grows, so past a few hundred thousand tokens a fresh session with just the slice is often the sharper one, too.
 
-They're configurable because the constants behind them are specific to one model's token pricing. A model with cheaper output moves the floor. Within a given model the numbers are robust: across a wide range of cache-read pricing assumptions the payback at high context moves only a couple of turns and the floor barely shifts, which is why they're stated plainly rather than recomputed at runtime.
+The numbers depend on the model's pricing, so the hook picks them for whichever model the session runs on; other models keep the earlier, lower thresholds. To override them, set `floor` and `tiers` in the config above, or scope them to one model under `"models": { "<model-id>": { ... } }`. A tier set to `0` is switched off.
 
 ### If it misreads
 

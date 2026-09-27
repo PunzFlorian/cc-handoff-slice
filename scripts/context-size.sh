@@ -13,15 +13,29 @@
 # fresh input from the last usage block. No de-duplication is needed for that —
 # duplicate records per streamed block only distort sums *across* turns, and
 # this reads a single record.
+#
+# With --model, prints "<tokens> <model-id>" instead: the model that served
+# that same record, or "unknown" when none is recorded. The restart thresholds
+# are per model, so the hook needs both from one read.
 
 set -o pipefail
+
+WITH_MODEL=0
+[ "${1:-}" = "--model" ] && WITH_MODEL=1
+
+# out <tokens> [model] — the one place output is formatted, so every early
+# exit honours --model too.
+out() {
+  if [ "$WITH_MODEL" = 1 ]; then printf '%s %s' "$1" "${2:-unknown}"
+  else printf '%s' "$1"; fi
+}
 
 PAYLOAD=""
 # Only read stdin if something is actually piped in; a bare invocation from a
 # terminal would otherwise block here forever.
 if [ ! -t 0 ]; then PAYLOAD=$(cat 2>/dev/null); fi
 
-command -v jq >/dev/null 2>&1 || { printf '0'; exit 0; }
+command -v jq >/dev/null 2>&1 || { out 0; exit 0; }
 
 TRANSCRIPT=""
 CWD=""
@@ -34,7 +48,7 @@ if [ -n "$PAYLOAD" ]; then
   # a session that file does not exist on disk yet, and the honest answer is
   # "unknown" — never some other session's transcript, whose size has nothing
   # to do with this one.
-  if [ -n "$TRANSCRIPT" ] && [ ! -f "$TRANSCRIPT" ]; then printf '0'; exit 0; fi
+  if [ -n "$TRANSCRIPT" ] && [ ! -f "$TRANSCRIPT" ]; then out 0; exit 0; fi
 fi
 [ -n "$CWD" ] || CWD="$PWD"
 
@@ -54,18 +68,25 @@ if [ -z "$TRANSCRIPT" ]; then
   fi
 fi
 
-[ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] || { printf '0'; exit 0; }
+[ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] || { out 0; exit 0; }
 
 # Bounded tail: transcripts reach megabytes, and every assistant record carries
 # a usage block, so the newest one is always within a few lines of the end.
-CTX=$(tail -n 80 "$TRANSCRIPT" 2>/dev/null \
-  | jq -Rn '[inputs | fromjson? | .message?.usage? | select(. != null)]
-            | if length == 0 then 0
-              else (last | (.cache_read_input_tokens // 0)
-                         + (.cache_creation_input_tokens // 0)
-                         + (.input_tokens // 0))
+# One jq pass yields both values, tab-separated, so size and model always
+# come from the same record.
+LINE=$(tail -n 80 "$TRANSCRIPT" 2>/dev/null \
+  | jq -Rrn '[inputs | fromjson? | .message? | select(.usage? != null)]
+            | if length == 0 then "0\tunknown"
+              else (last | "\((.usage.cache_read_input_tokens // 0)
+                           + (.usage.cache_creation_input_tokens // 0)
+                           + (.usage.input_tokens // 0))\t\(.model // "unknown")")
               end' 2>/dev/null)
 
+CTX=${LINE%%$'\t'*}
+MODEL=${LINE#*$'\t'}
 case "$CTX" in ''|*[!0-9]*) CTX=0 ;; esac
-printf '%s' "$CTX"
+# Model ids are plain slugs; anything else is not worth passing on.
+case "$MODEL" in ''|*[!a-zA-Z0-9._-]*) MODEL=unknown ;; esac
+[ "$LINE" = "$CTX" ] && MODEL=unknown
+out "$CTX" "$MODEL"
 exit 0

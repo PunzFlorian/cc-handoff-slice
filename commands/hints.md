@@ -24,7 +24,13 @@ hints: quiet  (set by .claude/handoff-slice.json in this repo)
   ~/.claude/handoff-slice.json   "on"   — overridden by the project config
 ```
 
-Also print the thresholds in force if the config overrides any of them, since a customised floor silently changes when hints appear.
+Then print the thresholds in force for this session's model. The defaults differ per model, so name the model and say where each number came from — the built-in default for that model, a flat `floor`/`tiers` key, or a `models.<model-id>` key (which beats the flat one within a file). Get the model from:
+
+```
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/context-size.sh" --model
+```
+
+It prints `<tokens> <model-id>`; `unknown` means the hook falls back to the general defaults (57k floor, tiers at 100k / 200k / 300k). A customised floor or tier silently changes when hints appear, and a tier set to `0` never fires — both are worth saying out loud.
 
 ## With an argument: write it
 
@@ -36,7 +42,7 @@ Also print the thresholds in force if the config overrides any of them, since a 
 | `quiet` | only the highest tier — the point where a restart pays back within a handful of turns |
 | `off` | never |
 
-Write `.hints` into `<repo>/.claude/handoff-slice.json`, creating the file if needed and **preserving any other keys already in it** — `floor` and `tiers` live in the same file and must survive. If `--global` is passed, write to `~/.claude/handoff-slice.json` instead.
+Write `.hints` into `<repo>/.claude/handoff-slice.json`, creating the file if needed and **preserving any other keys already in it** — `floor`, `tiers` and `models` live in the same file and must survive. If `--global` is passed, write to `~/.claude/handoff-slice.json` instead.
 
 Then confirm what changed and, when a higher-precedence layer would still override it, say so:
 
