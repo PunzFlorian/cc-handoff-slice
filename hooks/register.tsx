@@ -21,6 +21,16 @@ const selected = atom({ plugin: 'handoff-slice', key: 'selected' } as const, nul
 const mode = atom({ plugin: 'handoff-slice', key: 'mode' } as const, 'text')
 const page = atom({ plugin: 'handoff-slice', key: 'page' } as const, 0)
 
+// Slice files and issues are anyone's text: a cloned repo can commit slices,
+// and anyone with access can file an issue. Control characters (escape
+// sequences among them) never reach the screen; line breaks and tabs stay.
+const clean = (text: string) => text.replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, '')
+
+// What goes into the prompt after a command: a slice's uuid or slug, an
+// issue's number. Anything else is dropped rather than typed for the person.
+const safeId = (kind: 'local' | 'issue', id: string) =>
+  (kind === 'issue' ? /^\d{1,10}$/ : /^[A-Za-z0-9._-]{1,128}$/).test(id) ? id : null
+
 // The header lines /handoff-slice:create writes: `**Field**: value`.
 const field = (text: string, name: string) =>
   text.match(new RegExp(`^\\*\\*${name}\\*\\*:\\s*(.+)$`, 'm'))?.[1]?.trim()
@@ -33,8 +43,11 @@ const isStale = (date: string, now: number) => {
   return Number.isFinite(at) && now - at > STALE_MS
 }
 
-const loadCommand = (item: { kind: 'local' | 'issue'; id: string }) =>
-  item.kind === 'local' ? `/handoff-slice:load ${item.id}` : `/handoff-slice:issue-load ${item.id}`
+const loadCommand = (item: { kind: 'local' | 'issue'; id: string }) => {
+  const id = safeId(item.kind, item.id)
+  if (id === null) return null
+  return item.kind === 'local' ? `/handoff-slice:load ${id}` : `/handoff-slice:issue-load ${id}`
+}
 
 type $ = EngineInterface
 
@@ -53,9 +66,9 @@ async function scanLocal($: $): Promise<Handoff[]> {
       return {
         kind: 'local',
         id: field(text, 'UUID') ?? entry.name.replace(/\.md$/, ''),
-        title: text.match(/^#\s+(?:Slice:\s*)?(.+)$/m)?.[1]?.trim() ?? entry.name,
-        status: shortStatus(field(text, 'Status') ?? '?'),
-        date,
+        title: clean(text.match(/^#\s+(?:Slice:\s*)?(.+)$/m)?.[1]?.trim() ?? entry.name),
+        status: clean(shortStatus(field(text, 'Status') ?? '?')),
+        date: clean(date),
         isStale: isStale(date, now),
       }
     }),
@@ -72,7 +85,7 @@ async function scanIssues($: $): Promise<void> {
     )
     if (exitCode !== 0) {
       await update($, issues, () => [])
-      await update($, issueNote, () => stderr.trim().split('\n')[0] || 'gh failed')
+      await update($, issueNote, () => clean(stderr.trim().split('\n')[0] ?? '') || 'gh failed')
       return
     }
     const now = await $.clock.now()
@@ -81,7 +94,7 @@ async function scanIssues($: $): Promise<void> {
       rows.map(row => ({
         kind: 'issue' as const,
         id: String(row.number),
-        title: row.title.replace(/^\[?handoff(?:-slice)?\]?:?\s*/i, ''),
+        title: clean(row.title.replace(/^\[?handoff(?:-slice)?\]?:?\s*/i, '')),
         status: 'open',
         date: row.updatedAt.slice(0, 10),
         isStale: isStale(row.updatedAt, now),
@@ -235,7 +248,7 @@ async function openPreview($: $, item: Handoff) {
   } catch (error) {
     body = `Could not read: ${String(error)}`
   }
-  const next: Preview = { kind: item.kind, id: item.id, title: item.title, body }
+  const next: Preview = { kind: item.kind, id: item.id, title: item.title, body: clean(body) }
   await update($, selected, () => rowKey(item))
   await update($, top, () => 0)
   await update($, page, () => 0)
@@ -250,7 +263,12 @@ async function closePreview($: $) {
 }
 
 async function fillLoad($: $, item: { kind: 'local' | 'issue'; id: string }) {
-  await $.prompt.fill({ text: loadCommand(item) })
+  const command = loadCommand(item)
+  if (command === null) {
+    $.ui.toast('This slice has an unusual id; load it with /handoff-slice:load and its file name.')
+    return
+  }
+  await $.prompt.fill({ text: command })
   await update($, preview, () => null)
   $.ui.toast('Load command is in your prompt. Press Enter to load it.')
 }
@@ -322,7 +340,7 @@ const SLICE_COMMAND = /\/handoff-slice:(issue-)?(load|create)(?:<\/command-name>
 const sliceOf = (isIssue: boolean, action: string, arg: string): SessionSlice => ({
   kind: isIssue ? 'issue' : 'local',
   // An issue may be named by its URL; its number is what the commands take.
-  id: action === 'create' || !arg ? null : isIssue ? (arg.match(/(\d+)\/?$/)?.[1] ?? arg) : arg,
+  id: action === 'create' || !arg ? null : safeId(isIssue ? 'issue' : 'local', isIssue ? (arg.match(/(\d+)\/?$/)?.[1] ?? arg) : arg),
 })
 
 // The last slice this conversation loaded or created, typed or through the
