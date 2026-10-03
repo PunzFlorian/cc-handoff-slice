@@ -1,5 +1,5 @@
 {
-  "description": "handoff-slice: reports context size to the model once it passes the point where slicing out and restarting is cheaper than continuing. Silent below that, and disableable with /handoff-slice:hints off.",
+  "description": "handoff-slice: reports context size to the model once a restart pays off (silent below that, /handoff-slice:hints off disables it), and a function-hooks module that adds the /handoffs panel and the Slice now band above the prompt.",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -11,5 +11,8 @@
         ]
       }
     ]
-  }
+  },
+  "modules": [
+    "./register.tsx"
+  ]
 }

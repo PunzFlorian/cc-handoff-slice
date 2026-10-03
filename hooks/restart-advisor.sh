@@ -65,6 +65,8 @@ MODEL="${MODEL:-unknown}"
 # old ratio and starts ~20k lighter; the two partly cancel, and its tiers land
 # higher. The turn counts are what the hint tells the model; a notice of 0
 # switches that tier off.
+# hooks/register.tsx (tiersFor, paybackFor) draws the band from the same
+# numbers: change both together.
 case "$MODEL" in
   claude-opus-5-5*)
     D_FLOOR=38000;  D_NOTICE=200000; D_OFFER=300000; D_URGENT=500000

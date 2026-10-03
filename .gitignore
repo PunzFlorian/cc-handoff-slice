@@ -2,3 +2,7 @@
 # They routinely reference paths, projects, and measurements from outside this
 # repo, so they stay local.
 .claude/handoffs/
+
+# Written by Claude Code beside a function-hooks plugin it loads from disk:
+# this build's API typings, which tsconfig.json extends. Never edited.
+.claude-plugin/types/

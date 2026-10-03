@@ -27,6 +27,7 @@ Works in any repo after that — no per-project setup.
 | `/handoff-slice:issue-load <issue number or url>` | Loads a slice previously filed as a GitHub issue |
 | `/handoff-slice:issue-update <issue number or url>` | Revises an issue-backed handoff in place |
 | `/handoff-slice:hints [on\|quiet\|off]` | Controls the automatic context-size hints (see [Configuration](#configuration)) |
+| `/handoffs` | Opens a side panel listing this repo's slices and open handoff issues, to preview or load one (see [The panel and the band](#the-panel-and-the-band)) |
 
 You can also just say things like "slice off this part about the auth bug" — the bundled skill routes natural phrasing to the right command.
 
@@ -67,6 +68,14 @@ Every request in a session re-reads the whole conversation so far, so cost grows
 The catch is that the moment to do it arrives mid-work, and nothing announces it. The plugin's hook watches for it and prompts a restart when the numbers say it's worth one — silently doing nothing the rest of the time. What you'll see is an offer in two parts, and both matter: update or create the slice, then `/clear` and load it. Slicing without restarting saves nothing.
 
 Whether enough work remains is your call — the model knows the context size, you know what's left. Decline and it won't ask again until the next threshold. See [Configuration](#configuration) for the thresholds and the off switch.
+
+## The panel and the band
+
+On Claude Code builds that run function hooks, the plugin also draws two things of its own. Every command above works the same without them.
+
+**`/handoffs`** opens a side panel with the slices in `.claude/handoffs/`, newest first and flagged `stale` past two weeks, followed by open issues labelled `handoff-slice`. ↑↓ selects, Enter previews, `l` puts the load command in your prompt, `r` rescans, Esc closes. The preview keeps its header in place while the text scrolls (`j`/`k`, the wheel, PgUp/PgDn; `n`/`p` jump between sections), and `m` switches to rendered markdown a page at a time. Esc goes back to the list.
+
+**The band above the prompt** appears once the context passes the same thresholds the hint uses: the size, the turns after which a restart pays off, and a button. The button reads **Slice now** (`/handoff-slice:create`), or **Update slice** when this conversation already loaded or created one, so a long session keeps one slice current instead of cutting a new one each time. Either way it fills the prompt and you press Enter. `dismiss` hides it until the next threshold, and `/handoff-slice:hints off` hides it with the hint.
 
 ## One slice at a time
 
