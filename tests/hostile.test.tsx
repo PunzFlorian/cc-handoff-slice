@@ -35,6 +35,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
       filled.push(e.text)
       return { isFilled: true }
     })
+    on('session.root', () => ({ value: '/repo' }))
     on('session.start', (_$, e) => ({ cwd: e.cwd }))
 
     await $.session.start({ cwd: '/repo', surface, isInteractive: true })
