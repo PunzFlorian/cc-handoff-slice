@@ -26,7 +26,11 @@ for (const surface of ['terminal', 'desktop'] as const) {
     const opened: string[] = []
 
     on('fs.exists', () => ({ value: true }))
-    on('fs.list', () => ({ value: [{ name: `${UUID}-restart.md`, kind: 'file', size: SLICE.length, mtimeMs: 0, isLink: false }] }))
+    const listed: string[] = []
+    on('fs.list', (_$, e) => {
+      listed.push(e.path)
+      return { value: [{ name: `${UUID}-restart.md`, kind: 'file', size: SLICE.length, mtimeMs: 0, isLink: false }] }
+    })
     on('fs.read', () => ({ value: SLICE }))
     on('clock.now', () => ({ value: Date.parse('2026-10-03') }))
     on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: 'gh: not logged in' } as never }))
@@ -46,6 +50,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
       return { isFilled: true }
     })
 
+    on('session.root', () => ({ value: '/repo' }))
     on('session.start', (_$, e) => ({ cwd: e.cwd }))
     await $.session.start({ cwd: '/repo', surface, isInteractive: true })
     await $.command.run({ command: 'handoffs', args: '' } as never)
@@ -55,6 +60,8 @@ for (const surface of ['terminal', 'desktop'] as const) {
 
     const ui = await $.ui.mount({ plugin: 'handoff-slice', surface, component: 'Pane', requestId: 'handoffs', props: PANE } as never)
     expect(await ui.find({ text: /restart threshold/ })).toBeDefined()
+    // Read from the project root, so a `cd` in the session cannot hide them.
+    expect(listed.every(path => path === '/repo/.claude/handoffs')).toBe(true)
     expect(await ui.find({ text: /stale/ })).toBeDefined()
     await ui.press({ key: 'refresh' })
     expect(await ui.find({ text: /gh: not logged in/ })).toBeDefined()

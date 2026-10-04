@@ -22,6 +22,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
       return { isFilled: true }
     })
     on('turn.complete', () => ({ text: '' }) as never)
+    on('session.root', () => ({ value: '/repo' }))
     on('session.start', (_$, e) => ({ cwd: e.cwd }))
     on('session.end', (_$, e) => ({ sessionId: e.sessionId }) as never)
     // The engine draws nothing of its own in the band.

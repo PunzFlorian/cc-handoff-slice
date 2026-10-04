@@ -51,16 +51,21 @@ const loadCommand = (item: { kind: 'local' | 'issue'; id: string }) => {
 
 type $ = EngineInterface
 
+// Paths start at the project root: a `cd` during the session moves the
+// working directory, and the slices would seem to vanish with it.
+const slicesDir = async ($: $) => `${await $.session.root()}/${DIR}`
+
 async function scanLocal($: $): Promise<Handoff[]> {
-  if (!(await $.fs.exists(DIR))) return []
+  const dir = await slicesDir($)
+  if (!(await $.fs.exists(dir))) return []
   const now = await $.clock.now()
-  const entries = (await $.fs.list(DIR)).filter(
+  const entries = (await $.fs.list(dir)).filter(
     entry => entry.kind === 'file' && entry.name.endsWith('.md'),
   )
   const list = await Promise.all(
     entries.map(async (entry): Promise<Handoff | null> => {
       // One unreadable file (too big, no permission) must not empty the list.
-      const text = await $.fs.read(`${DIR}/${entry.name}`).catch(() => null)
+      const text = await $.fs.read(`${dir}/${entry.name}`).catch(() => null)
       if (text === null) return null
       const date = field(text, 'Updated') ?? field(text, 'Created') ?? '—'
       return {
@@ -81,7 +86,7 @@ async function scanIssues($: $): Promise<void> {
     const { exitCode, stdout, stderr } = await $.process.run(
       ['gh', 'issue', 'list', '--label', ISSUE_LABEL, '--state', 'open',
         '--json', 'number,title,updatedAt', '--limit', '50'],
-      { timeoutMs: 15_000 },
+      { timeoutMs: 15_000, cwd: await $.session.root() },
     )
     if (exitCode !== 0) {
       await update($, issues, () => [])
@@ -239,10 +244,11 @@ async function openPreview($: $, item: Handoff) {
   let body: string
   try {
     if (item.kind === 'local') {
-      const name = (await $.fs.list(DIR)).find(entry => entry.name.startsWith(item.id))?.name
-      body = name ? await $.fs.read(`${DIR}/${name}`) : 'File not found.'
+      const dir = await slicesDir($)
+      const name = (await $.fs.list(dir)).find(entry => entry.name.startsWith(item.id))?.name
+      body = name ? await $.fs.read(`${dir}/${name}`) : 'File not found.'
     } else {
-      const run = await $.process.run(['gh', 'issue', 'view', item.id, '--json', 'body', '-q', '.body'])
+      const run = await $.process.run(['gh', 'issue', 'view', item.id, '--json', 'body', '-q', '.body'], { cwd: await $.session.root() })
       body = run.exitCode === 0 ? run.stdout : run.stderr
     }
   } catch (error) {
@@ -253,6 +259,8 @@ async function openPreview($: $, item: Handoff) {
   await update($, top, () => 0)
   await update($, page, () => 0)
   await update($, preview, () => next)
+  // The list may have been scrolled; the preview's window starts at its top.
+  await $.ui.scroll({ in: LIST, to: 'start' }).catch(() => undefined)
 }
 
 // Back to the list with the ring on the row that was previewed.
@@ -271,6 +279,21 @@ async function fillLoad($: $, item: { kind: 'local' | 'issue'; id: string }) {
   await $.prompt.fill({ text: command })
   await update($, preview, () => null)
   $.ui.toast('Load command is in your prompt. Press Enter to load it.')
+}
+
+// Moves the ring one row in the list and keeps that row in view. False when
+// there is no row that way, or the pane does not hold the keys.
+async function moveSelection($: $, by: 1 | -1): Promise<boolean> {
+  const items = [...(await read($, handoffs)), ...((await read($, issues)) ?? [])]
+  const key = await read($, selected)
+  const at = items.findIndex(one => rowKey(one) === key)
+  const target = items[at === -1 ? 0 : at + by]
+  if (!target) return false
+  const moved = await $.ui.focus({ requestId: LIST, key: rowKey(target) }).catch(() => ({ deny: 'failed' }))
+  if ('deny' in moved) return false
+  await update($, selected, () => rowKey(target))
+  await $.ui.scroll({ in: LIST, to: { key: rowKey(target) } }).catch(() => undefined)
+  return true
 }
 
 // `l` in the list loads the row the ring is on, or the first one.
@@ -312,7 +335,8 @@ async function readConfig($: $, path: string): Promise<Config | undefined> {
 // each file a key for this model beats the flat key, as the shell hook reads it.
 async function settings($: $, model: string) {
   const configDir = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${(await $.env.get('HOME')) ?? '~'}/.claude`
-  const files = [await readConfig($, '.claude/handoff-slice.json'), await readConfig($, `${configDir}/handoff-slice.json`)]
+  const root = await $.session.root()
+  const files = [await readConfig($, `${root}/.claude/handoff-slice.json`), await readConfig($, `${configDir}/handoff-slice.json`)]
   const pick = (get: (file: Config) => unknown) => files.map(file => (file ? get(file) : undefined)).find(value => value !== undefined)
   const number = (value: unknown, fallback: number) =>
     typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : fallback
@@ -448,13 +472,23 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // The preview scrolls its own rows so the header stays put.
+  // The preview scrolls its own rows so the header stays put. In the list,
+  // once it outgrows the pane the engine spends an arrow key on scrolling a
+  // line and the ring stays put; an arrow moves the selection there instead.
+  // The wheel carries a pointer and still scrolls.
   on('ui.scroll', async ($, e, next) => {
-    if (e.requestId !== LIST || !(await read($, preview))) return next(e)
+    if (e.requestId !== LIST) return next(e)
+    if (!(await read($, preview))) {
+      const isArrow = e.origin.kind === 'person' && !e.pointer && Math.abs(e.by) === 1
+      if (isArrow && (await moveSelection($, e.by > 0 ? 1 : -1))) return {}
+      return next(e)
+    }
+    // The plugin's own moves (back to the top on opening) go through.
+    if (e.origin.kind === 'plugin') return next(e)
     if ((await read($, mode)) === 'text') await scrollBy($, e.by)
-    // A page fits whole, so only the page keys (a move of more than a wheel
-    // tick or two) turn it; the wheel would flip pages by accident.
-    else if (Math.abs(e.by) > 2) await turnPage($, Math.sign(e.by))
+    // A page fits whole: the arrow and page keys turn it, the wheel (it
+    // carries a pointer) does not, or one tick would flip a page by accident.
+    else if (!e.pointer) await turnPage($, Math.sign(e.by))
     return {}
   })
 
@@ -493,8 +527,8 @@ export const register: Register = on => {
           </Box>
           <Text key="preview-position" dimColor wrap="truncate-end">
             {isMarkdown
-              ? `── page ${pageAt + 1}/${pages.length}${shownPage?.heading ? ` · ${shownPage.heading}` : ''} · PgUp/PgDn turn · Esc back`
-              : `── ${lines.length === 0 ? 0 : at + 1}-${Math.min(lines.length, at + room)} of ${lines.length} · wheel/PgUp/PgDn scroll · Esc back`}
+              ? `── page ${pageAt + 1}/${pages.length}${shownPage?.heading ? ` · ${shownPage.heading}` : ''} · ↑↓ turn · Esc back`
+              : `── ${lines.length === 0 ? 0 : at + 1}-${Math.min(lines.length, at + room)} of ${lines.length} · ↑↓ scroll · Esc back`}
           </Text>
           {isMarkdown
             ? <Markdown key={`page-${pageAt}`} text={shownPage?.text ?? ''} />
@@ -503,6 +537,11 @@ export const register: Register = on => {
                 {line.text || ' '}
               </Text>
             ))}
+          {/* Rows past the window's end, never shown: the engine spends ↑↓ on
+              scrolling only while a pane overflows, and walks the buttons
+              otherwise. Overflowing, ↑↓ reach ui.scroll above, which moves
+              the text and never the window; the keys are the hotkeys. */}
+          {Array.from({ length: e.props.scroll.bodyRows }, () => <Text> </Text>)}
         </Box>
       )
     }
