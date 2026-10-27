@@ -136,7 +136,7 @@ The numbers depend on the model's pricing, so the hook picks them for whichever 
 
 ### If it misreads
 
-The hook degrades to silence, never to noise. No `jq`, no transcript, an unreadable config, a nonsense threshold value — each of those ends in printing nothing or falling back to the measured default. A context size it can't determine is treated as unknown, which is not the same as small.
+The hook degrades to silence, never to noise. No `jq`, no transcript, an unreadable config, a nonsense threshold value — each of those ends in printing nothing or falling back to the measured default. A context size it can't determine is treated as unknown, which is not the same as small. That includes the first prompt after a compaction: the transcript has no size for the compacted context until the model answers once, so the hook stays quiet for that prompt rather than repeat the size from before.
 
 ## Example
 

@@ -14,6 +14,11 @@
 # duplicate records per streamed block only distort sums *across* turns, and
 # this reads a single record.
 #
+# A compaction writes a boundary record but no usage until the next response,
+# so between the two the newest usage still describes the context from before
+# it. Until a response follows the boundary the size is unknown, and this
+# prints 0.
+#
 # With --model, prints "<tokens> <model-id>" instead: the model that served
 # that same record, or "unknown" when none is recorded. The restart thresholds
 # are per model, so the hook needs both from one read.
@@ -73,14 +78,18 @@ fi
 # Bounded tail: transcripts reach megabytes, and every assistant record carries
 # a usage block, so the newest one is always within a few lines of the end.
 # One jq pass yields both values, tab-separated, so size and model always
-# come from the same record.
+# come from the same record. A compaction boundary after the newest usage
+# zeroes the size but keeps the model, which the compaction did not change.
 LINE=$(tail -n 80 "$TRANSCRIPT" 2>/dev/null \
-  | jq -Rrn '[inputs | fromjson? | .message? | select(.usage? != null)]
-            | if length == 0 then "0\tunknown"
-              else (last | "\((.usage.cache_read_input_tokens // 0)
-                           + (.usage.cache_creation_input_tokens // 0)
-                           + (.usage.input_tokens // 0))\t\(.model // "unknown")")
-              end' 2>/dev/null)
+  | jq -Rrn 'reduce (inputs | fromjson? | objects) as $r ({ctx: 0, model: "unknown"};
+              if $r.type == "system" and $r.subtype == "compact_boundary" then .ctx = 0
+              elif ($r.message | type) == "object" and $r.message.usage != null then
+                {ctx: (($r.message.usage.cache_read_input_tokens // 0)
+                       + ($r.message.usage.cache_creation_input_tokens // 0)
+                       + ($r.message.usage.input_tokens // 0)),
+                 model: ($r.message.model // "unknown")}
+              else . end)
+            | "\(.ctx)\t\(.model)"' 2>/dev/null)
 
 CTX=${LINE%%$'\t'*}
 MODEL=${LINE#*$'\t'}
