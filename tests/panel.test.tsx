@@ -29,9 +29,19 @@ for (const surface of ['terminal', 'desktop'] as const) {
     const listed: string[] = []
     on('fs.list', (_$, e) => {
       listed.push(e.path)
-      return { value: [{ name: `${UUID}-restart.md`, kind: 'file', size: SLICE.length, mtimeMs: 0, isLink: false }] }
+      return {
+        value: [
+          { name: `${UUID}-restart.md`, kind: 'file', size: SLICE.length, mtimeMs: 0, isLink: false },
+          // Closed slices live in archive/ and stay out of the list.
+          { name: 'archive', kind: 'dir', size: 0, mtimeMs: 0, isLink: false },
+        ],
+      }
     })
-    on('fs.read', () => ({ value: SLICE }))
+    const read: string[] = []
+    on('fs.read', (_$, e) => {
+      read.push(e.path)
+      return { value: SLICE }
+    })
     on('clock.now', () => ({ value: Date.parse('2026-10-03') }))
     on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: 'gh: not logged in' } as never }))
     on('command.register', (_$, e) => ({ value: { command: e.name } }))
@@ -62,6 +72,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await ui.find({ text: /restart threshold/ })).toBeDefined()
     // Read from the project root, so a `cd` in the session cannot hide them.
     expect(listed.every(path => path === '/repo/.claude/handoffs')).toBe(true)
+    expect(read.some(path => path.includes('archive'))).toBe(false)
     expect(await ui.find({ text: /stale/ })).toBeDefined()
     await ui.press({ key: 'refresh' })
     expect(await ui.find({ text: /gh: not logged in/ })).toBeDefined()

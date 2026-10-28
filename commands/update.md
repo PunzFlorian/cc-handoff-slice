@@ -15,7 +15,9 @@ In this order:
 2. If empty — the slice loaded or updated earlier in **this session**.
 3. If neither, list what's in `.claude/handoffs/` (uuid + slug + topic) and ask which one. Do **not** auto-pick the most recent.
 
-Multiple matches on `$ARGUMENTS`: show them and ask. No match: say so, suggest `/handoff-slice:list`.
+Multiple matches on `$ARGUMENTS`: show them and ask. No match: also look in `.claude/handoffs/archive/`; failing that, say so and suggest `/handoff-slice:list --all`.
+
+A slice found in `archive/` was closed. Revising it is allowed, e.g. to add a lesson learned later, but say it's closed, and leave it in `archive/` with its closed Status unless the user wants to reopen it.
 
 Read the resolved file fully before changing anything.
 
@@ -82,7 +84,7 @@ Tell the user:
 - Which slice was revised (uuid + slug + path).
 - Each correction, one line each — same content as the banner.
 - Sections checked and found unchanged.
-- If `Status` is now `ready-to-close`, say the slice looks closeable — but don't delete it.
+- If `Status` is now `ready-to-close`, say the slice looks closeable and offer `/handoff-slice:close <uuid>`. Don't close it yourself.
 
 End with the load command, unchanged uuid:
 

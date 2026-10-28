@@ -116,7 +116,9 @@ Report which sections you checked and found unchanged — "verified, no change" 
 
 The line that gets confused: **undecided is not blocked.** A slice whose next step is "choose the capture point" is `active` — the choice is yours to make. It's `blocked` only if the choice belongs to someone else.
 
-A revision may set `Status` to `ready-to-close`. It may **not** act on that: never delete the file, never `gh issue close`. Say the slice looks closeable and leave the act to the user.
+A revision may set `Status` to `ready-to-close`. It may **not** act on that: never delete the file, never `gh issue close`. Say the slice looks closeable, offer `/handoff-slice:close <uuid>` for a local slice, and leave the act to the user.
+
+A fourth value, `closed: <outcome> — <reason>` (outcome `done`, `abandoned` or `superseded`), is written only by `/handoff-slice:close`, which also adds a `**Closed**` date and moves the file into `.claude/handoffs/archive/`.
 
 ## Applying the revision
 

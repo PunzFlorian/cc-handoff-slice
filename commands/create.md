@@ -18,6 +18,23 @@ While extracting:
 - **Don't restate what's already recorded elsewhere.** If something is fully captured in a spec, PR, issue, or commit, reference it by path or URL instead of re-describing it.
 - Prefer showing real code (signatures, snippets, request/response shapes) over describing it in prose.
 
+## 2a. Check for a live slice on the same topic
+
+Read only the header blocks of the live slices, never their bodies:
+
+```
+for f in .claude/handoffs/*.md; do sed -n '1,8p' "$f"; echo; done
+```
+
+If one's **Topic** covers the same work, don't write a second slice next to it silently. Ask:
+
+- **Update the existing slice** (`/handoff-slice:update <uuid>`). The default: it keeps what the old slice learned.
+- **Write a new slice that supersedes it.** For when the old one is shaped wrong for what the work has become, e.g. phase 1's slice when phase 2 starts.
+
+Choosing supersede adds `**Supersedes**: <old uuid>` to the new slice's header, and after writing it, closes the old one with `/handoff-slice:close <old uuid> superseded by <new uuid>`.
+
+The new slice must stand on its own. `Supersedes` is a pointer back to the archived slice for anyone who goes looking. Neither `create` nor `load` reads the slice it points to.
+
 ## 3. Write the file
 
 Generate an id with `uuidgen` (lowercase it), and derive a short kebab-case slug from the topic (2-4 words).
@@ -32,6 +49,7 @@ Create the directory if needed and write to `.claude/handoffs/<uuid>-<slug>.md` 
 **Updated**: <date>
 **Topic**: <one-line description>
 **Status**: active | blocked | ready-to-close
+**Supersedes**: <uuid of the slice this replaces — only when it replaces one>
 
 ## Objective
 What this slice of work is trying to achieve, in 1-2 sentences.
@@ -98,6 +116,8 @@ The target is a guide, not a hard cap — a genuinely large piece of work can ju
 - `active` — someone can pick this up right now and make progress. Next Step 1 is something they can just *do*, including "work out where X happens" or "decide between A and B". **An open question you're free to settle yourself is `active`.**
 - `blocked` — progress needs something outside this slice: a decision that isn't yours, an unmerged PR, an unanswered question, someone else's work. If no amount of effort gets you moving, it's blocked.
 - `ready-to-close` — nothing actionable remains.
+
+A fourth value, `closed: <outcome>`, is set only by `/handoff-slice:close`, never by `create`.
 
 Undecided is not blocked. That's the one that gets miscalled.
 

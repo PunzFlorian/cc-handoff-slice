@@ -9,9 +9,10 @@ Load a slice created by `/handoff-slice:create` into the current session.
 
 If `$ARGUMENTS` is empty, tell the user to run `/handoff-slice:list` to see available slices, and stop.
 
-Otherwise look in `.claude/handoffs/` for a file whose name matches `$ARGUMENTS` as a uuid prefix or slug substring.
+Otherwise look in `.claude/handoffs/` for a file whose name matches `$ARGUMENTS` as a uuid prefix or slug substring. If nothing at the top level matches, look in `.claude/handoffs/archive/`, where `/handoff-slice:close` moves closed slices.
 
-- No match: say so, suggest `/handoff-slice:list`.
+- No match: say so, suggest `/handoff-slice:list --all`.
+- A match in `archive/`: say it's closed, with the outcome and date from its Status and `Closed` fields, before going on. It's a record of finished work, not live work.
 - Multiple matches: show them (uuid + slug + topic + head size) and ask the user to pick **one**.
 - Exactly one match: read its **head** (see below).
 
@@ -42,6 +43,8 @@ sed -n '1,/^<!-- ARCHIVE/p' <file>
 ```
 
 Everything below the marker — Dead Ends, Code Refs, superseded rows and snippets — stays on disk unread. It is the part that grows with every revision, and loading it means paying for the whole archive on every request of the session when only the head decides what to do next.
+
+**Don't follow `Supersedes`.** A slice with a `**Supersedes**: <uuid>` header replaced an older one, and it carries everything the work needs. The older slice stays in `archive/` for anyone who goes looking. Loading it too would charge its size on every request for nothing. Mention the field exists, and leave it there.
 
 **Slices written before the marker existed have none**, and the command above then returns the whole file. That is the correct fallback, but say so out loud: *"no archive marker — loaded the whole file (N KB)."* Otherwise an old slice looks as cheap as a split one while costing several times more, and nobody knows to run `/handoff-slice:update` to split it.
 
