@@ -24,6 +24,7 @@ Works in any repo after that — no per-project setup.
 | `/handoff-slice:update [uuid or slug]` | Revises a slice that's gone stale — derives what changed from the conversation *and* from repo state |
 | `/handoff-slice:list [--all]` | Shows the live slices saved in this repo; `--all` adds the closed ones |
 | `/handoff-slice:close <uuid or slug> [done\|abandoned\|superseded] [reason]` | Closes a slice: writes a closing note and moves it to `.claude/handoffs/archive/` |
+| `/handoff-slice:close` | Reviews every live slice and proposes which to close |
 | `/handoff-slice:issue-create <topic>` | Same extraction, but files it as a self-contained GitHub issue instead of a local file — for handing off to someone else, or a machine that doesn't have your local `.claude/handoffs/` |
 | `/handoff-slice:issue-load <issue number or url>` | Loads a slice previously filed as a GitHub issue |
 | `/handoff-slice:issue-update <issue number or url>` | Revises an issue-backed handoff in place |
@@ -66,6 +67,30 @@ Finished work keeps its slice around, so without a way to close them the live li
 - It moves the file to `.claude/handoffs/archive/`. Nothing is deleted. The handoffs folder is usually gitignored, so a deleted slice would be gone for good, Dead Ends included, and those are often the most useful part of abandoned work.
 
 `list` and the panel show only live slices; `list --all` adds the archive. `load` and `update` still find an archived slice by its uuid. To reopen one, move it back out of `archive/`.
+
+### Finding the finished ones
+
+`/handoff-slice:close` with no arguments reviews every live slice and proposes which to close. It doesn't close anything until you pick.
+
+- **Cheap signals, from the header lines only:**
+  - Status `ready-to-close`.
+  - The slice's branch has merged.
+  - Untouched for more than two weeks.
+  - Another live slice covers the same topic.
+- **A step check, per slice:** subagents compare each slice's Next Steps with `git log` and return one line each, so the review doesn't load every slice into your session.
+
+You get a table with the evidence and a suggestion per slice (`done`, `abandoned`, `superseded`, `keep`), and decide. Code can't tell a step that wasn't done from one that wasn't needed, so that call stays yours.
+
+**The merge signal** comes from the `**Branch**` field that `create` writes when you're not on the default branch. [`scripts/slice-merged.sh`](scripts/slice-merged.sh) checks it with plain git, so it works the same on GitHub, Azure DevOps and GitLab:
+
+- **`merged`** means the branch tip is on `origin/<default>`.
+- **It never reports a branch as merged when the branch has no commits of its own after the slice was cut.** A freshly cut branch points at a commit main already has, so without that rule it would count as merged.
+- **Squash merges rewrite the branch's commits**, so a squashed branch reads as not merged. Merge commits, the GitHub and Azure DevOps default, work.
+- **`load` runs the same check** and mentions a merged branch, as a hint that some Next Steps may be done.
+
+Slices written before this field existed have no Branch, and get no merge signal.
+
+### Superseding a slice
 
 When `create` is about to write a slice on a topic a live slice already covers, it asks first: update the existing slice, or write a new one that supersedes it. A superseding slice records `**Supersedes**: <old uuid>` and the old one is closed as `superseded`. The new slice stands on its own, so `load` never follows that link; it's there for when you want to go back to the old one on purpose.
 
@@ -177,6 +202,7 @@ Each saved file is a small, self-contained doc:
 **Updated**: 2026-07-13
 **Topic**: Move rate limiting from middleware into the gateway layer
 **Status**: active
+**Branch**: feat/gateway-rate-limit
 
 ## Objective
 ...
