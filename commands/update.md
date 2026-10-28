@@ -70,6 +70,7 @@ Apply the section-by-section pass from the conventions file, in the priority ord
 
 Also:
 - Set `**Updated**: <today>` in the header block. If the field isn't there, add it.
+- If the work has moved to another branch, set `**Branch**` to it (add the field if missing, per `create`). Don't add one for a branch that's already merged; the field is for work still to land.
 - Insert the dated revision banner directly under the header block, following the retention rule (newest two blocks expanded, older dates collapsed to one line).
 - Redact secrets in anything newly added, same as `create`.
 

@@ -50,6 +50,7 @@ Create the directory if needed and write to `.claude/handoffs/<uuid>-<slug>.md` 
 **Topic**: <one-line description>
 **Status**: active | blocked | ready-to-close
 **Supersedes**: <uuid of the slice this replaces — only when it replaces one>
+**Branch**: <the branch this work happens on — omit on the default branch>
 
 ## Objective
 What this slice of work is trying to achieve, in 1-2 sentences.
@@ -118,6 +119,8 @@ The target is a guide, not a hard cap — a genuinely large piece of work can ju
 - `ready-to-close` — nothing actionable remains.
 
 A fourth value, `closed: <outcome>`, is set only by `/handoff-slice:close`, never by `create`.
+
+**Branch** is `git branch --show-current`, written as the bare name. Leave the field out on the default branch (`main`, `master`, or whatever `origin/HEAD` points to) and on a detached HEAD: there's no branch to wait for. `load` and `close` use it to tell whether the work has been merged, so name the one branch this slice's work goes onto, not every branch the conversation touched.
 
 Undecided is not blocked. That's the one that gets miscalled.
 

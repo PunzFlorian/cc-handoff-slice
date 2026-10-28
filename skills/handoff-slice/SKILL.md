@@ -24,6 +24,7 @@ Activate when the user says things like: "hand off", "slice this off", "save thi
 - User wants to **resume from a GitHub issue** → run `/handoff-slice:issue-load <issue number or url>`.
 - A slice that already exists has gone **stale** → run `/handoff-slice:update <uuid or slug>`, or `/handoff-slice:issue-update <number>` for an issue-backed one. Not `create` — a new slice loses what the old one learned.
 - User wants to **close, finish, drop or archive** a local slice → run `/handoff-slice:close <uuid or slug>`. It moves the slice into `.claude/handoffs/archive/` with a closing note.
+- User asks **which slices are done**, or wants to **tidy up** the live list → run `/handoff-slice:close` with no arguments. It reviews every live slice and proposes which to close.
 
 **Never delete a slice file**, whatever the wording: "close", "remove", "get rid of", "clean up". The handoffs folder is usually gitignored, so a deleted slice can't be restored, and its Dead Ends go with it. Closing is the way to take a slice out of the live list.
 

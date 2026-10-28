@@ -70,6 +70,14 @@ A slice is a snapshot, not the truth. Before acting on its first **Next Step**, 
 git log --oneline --since=<slice Updated or Created date>
 ```
 
+If the slice has a `**Branch**` field, ask git whether that branch has landed:
+
+```
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/slice-merged.sh" <file>
+```
+
+It prints `merged <sha>`, `open` or `unknown`, from local refs, without fetching. `merged` means the branch's work is on the default branch, which makes it likely that some Next Steps are done. It doesn't say which: a PR often covers only part of a slice, so check the steps against `git log` rather than calling the slice finished. `unknown` is no signal; say nothing about it.
+
 Also check the state of any issue or PR that step depends on (`gh issue view`, `gh pr view`), and — the check that matters most — search for issues the slice **doesn't** reference, closed ones included:
 
 ```
