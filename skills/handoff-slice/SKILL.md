@@ -1,6 +1,6 @@
 ---
 name: handoff-slice
-description: Extracts a topic-scoped slice of the current conversation into a standalone handoff doc (local file or GitHub issue), loads previously saved slices back in, and revises ones that have gone stale. Activates on mentions of handing off, slicing off, filing an issue for later, saving part of a conversation, or a handoff being out of date, on session start when saved slices exist, and mid-session once the context has grown past the point where slicing out and restarting costs less than continuing.
+description: Extracts a topic-scoped slice of the current conversation into a standalone handoff doc (local file or GitHub issue), loads previously saved slices back in, and revises ones that have gone stale. Activates on mentions of handing off, slicing off, filing an issue for later, saving part of a conversation, a handoff being out of date, or closing or cleaning up a slice, on session start when saved slices exist, and mid-session once the context has grown past the point where slicing out and restarting costs less than continuing.
 ---
 
 # Handoff Slicing
@@ -23,6 +23,9 @@ Activate when the user says things like: "hand off", "slice this off", "save thi
 - User wants to **hand this off to someone else**, or to a machine without this local file → run `/handoff-slice:issue-create <topic>`.
 - User wants to **resume from a GitHub issue** → run `/handoff-slice:issue-load <issue number or url>`.
 - A slice that already exists has gone **stale** → run `/handoff-slice:update <uuid or slug>`, or `/handoff-slice:issue-update <number>` for an issue-backed one. Not `create` — a new slice loses what the old one learned.
+- User wants to **close, finish, drop or archive** a local slice → run `/handoff-slice:close <uuid or slug>`. It moves the slice into `.claude/handoffs/archive/` with a closing note.
+
+**Never delete a slice file**, whatever the wording: "close", "remove", "get rid of", "clean up". The handoffs folder is usually gitignored, so a deleted slice can't be restored, and its Dead Ends go with it. Closing is the way to take a slice out of the live list.
 
 ## Restarting mid-session
 

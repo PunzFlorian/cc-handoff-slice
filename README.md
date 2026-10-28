@@ -22,7 +22,8 @@ Works in any repo after that — no per-project setup.
 | `/handoff-slice:create <topic>` | Extracts everything relevant to `<topic>` from the current conversation into `.claude/handoffs/<uuid>-<slug>.md` |
 | `/handoff-slice:load <uuid or slug>` | Loads a saved slice into the current session and picks up from its Next Steps |
 | `/handoff-slice:update [uuid or slug]` | Revises a slice that's gone stale — derives what changed from the conversation *and* from repo state |
-| `/handoff-slice:list` | Shows every slice saved in this repo |
+| `/handoff-slice:list [--all]` | Shows the live slices saved in this repo; `--all` adds the closed ones |
+| `/handoff-slice:close <uuid or slug> [done\|abandoned\|superseded] [reason]` | Closes a slice: writes a closing note and moves it to `.claude/handoffs/archive/` |
 | `/handoff-slice:issue-create <topic>` | Same extraction, but files it as a self-contained GitHub issue instead of a local file — for handing off to someone else, or a machine that doesn't have your local `.claude/handoffs/` |
 | `/handoff-slice:issue-load <issue number or url>` | Loads a slice previously filed as a GitHub issue |
 | `/handoff-slice:issue-update <issue number or url>` | Revises an issue-backed handoff in place |
@@ -57,6 +58,17 @@ so there is no partial write available there.)
 
 Neither command closes anything. If the work looks finished they'll say the slice is closeable and leave the act to you.
 
+## Closing slices
+
+Finished work keeps its slice around, so without a way to close them the live list fills up with slices that are done. `/handoff-slice:close <uuid> done` (or `abandoned`, or `superseded`) takes one out of it:
+
+- It sets Status to `closed: <outcome> — <reason>`, adds a `Closed` date, and puts a closing note on top that says what became of any steps still open. A step left open because it wasn't needed stays in the file, marked as such.
+- It moves the file to `.claude/handoffs/archive/`. Nothing is deleted. The handoffs folder is usually gitignored, so a deleted slice would be gone for good, Dead Ends included, and those are often the most useful part of abandoned work.
+
+`list` and the panel show only live slices; `list --all` adds the archive. `load` and `update` still find an archived slice by its uuid. To reopen one, move it back out of `archive/`.
+
+When `create` is about to write a slice on a topic a live slice already covers, it asks first: update the existing slice, or write a new one that supersedes it. A superseding slice records `**Supersedes**: <old uuid>` and the old one is closed as `superseded`. The new slice stands on its own, so `load` never follows that link; it's there for when you want to go back to the old one on purpose.
+
 `issue-create`/`issue-load` require the [`gh` CLI](https://cli.github.com/) installed and authenticated against this repo. Issues get a `handoff-slice` label so they're easy to find later with `gh issue list --label handoff-slice`. The issue body is fully self-contained — no link back to anything local — and has the exact `/handoff-slice:issue-load <number>` command embedded right in the description, so anyone opening it on GitHub knows exactly how to pick it up.
 
 ## Restarting mid-session
@@ -73,7 +85,7 @@ Whether enough work remains is your call — the model knows the context size, y
 
 On Claude Code builds that run function hooks, the plugin also draws two things of its own. Every command above works the same without them.
 
-**`/handoffs`** opens a side panel with the slices in `.claude/handoffs/`, newest first and flagged `stale` past two weeks, followed by open issues labelled `handoff-slice`. ↑↓ selects, Enter previews, `l` puts the load command in your prompt, `r` rescans, Esc closes. The preview keeps its header in place while the text scrolls (`j`/`k`, the wheel, PgUp/PgDn; `n`/`p` jump between sections), and `m` switches to rendered markdown a page at a time. Esc goes back to the list.
+**`/handoffs`** opens a side panel with the live slices in `.claude/handoffs/` (not the archive), newest first and flagged `stale` past two weeks, followed by open issues labelled `handoff-slice`. ↑↓ selects, Enter previews, `l` puts the load command in your prompt, `r` rescans, Esc closes. The preview keeps its header in place while the text scrolls (`j`/`k`, the wheel, PgUp/PgDn; `n`/`p` jump between sections), and `m` switches to rendered markdown a page at a time. Esc goes back to the list.
 
 **The band above the prompt** appears once the context passes the same thresholds the hint uses: the size, the turns after which a restart pays off, and a button. The button reads **Slice now** (`/handoff-slice:create`), or **Update slice** when this conversation already loaded or created one, so a long session keeps one slice current instead of cutting a new one each time. Either way it fills the prompt and you press Enter. `dismiss` hides it until the next threshold, and `/handoff-slice:hints off` hides it with the hint.
 
