@@ -19,11 +19,11 @@ Works in any repo after that — no per-project setup.
 
 | Command | What it does |
 |---------|--------------|
-| `/handoff-slice:create <topic>` | Extracts everything relevant to `<topic>` from the current conversation into `.claude/handoffs/<uuid>-<slug>.md` |
+| `/handoff-slice:create <topic>` | Extracts everything relevant to `<topic>` from the current conversation into `.claude/handoffs/<uuid>-<slug>.md` (shared by every worktree, see [Worktrees](#worktrees)) |
 | `/handoff-slice:load <uuid or slug>` | Loads a saved slice into the current session and picks up from its Next Steps |
 | `/handoff-slice:update [uuid or slug]` | Revises a slice that's gone stale — derives what changed from the conversation *and* from repo state |
 | `/handoff-slice:list [--all]` | Shows the live slices saved in this repo; `--all` adds the closed ones |
-| `/handoff-slice:close <uuid or slug> [done\|abandoned\|superseded] [reason]` | Closes a slice: writes a closing note and moves it to `.claude/handoffs/archive/` |
+| `/handoff-slice:close <uuid or slug> [done\|abandoned\|superseded] [reason]` | Closes a slice: writes a closing note and moves it to `archive/` in the handoffs folder |
 | `/handoff-slice:close` | Reviews every live slice and proposes which to close |
 | `/handoff-slice:issue-create <topic>` | Same extraction, but files it as a self-contained GitHub issue instead of a local file — for handing off to someone else, or a machine that doesn't have your local `.claude/handoffs/` |
 | `/handoff-slice:issue-load <issue number or url>` | Loads a slice previously filed as a GitHub issue |
@@ -64,7 +64,7 @@ Neither command closes anything. If the work looks finished they'll say the slic
 Finished work keeps its slice around, so without a way to close them the live list fills up with slices that are done. `/handoff-slice:close <uuid> done` (or `abandoned`, or `superseded`) takes one out of it:
 
 - It sets Status to `closed: <outcome> — <reason>`, adds a `Closed` date, and puts a closing note on top that says what became of any steps still open. A step left open because it wasn't needed stays in the file, marked as such.
-- It moves the file to `.claude/handoffs/archive/`. Nothing is deleted. The handoffs folder is usually gitignored, so a deleted slice would be gone for good, Dead Ends included, and those are often the most useful part of abandoned work.
+- It moves the file to `archive/` in the handoffs folder. Nothing is deleted. The handoffs folder is usually gitignored, so a deleted slice would be gone for good, Dead Ends included, and those are often the most useful part of abandoned work.
 
 `list` and the panel show only live slices; `list --all` adds the archive. `load` and `update` still find an archived slice by its uuid. To reopen one, move it back out of `archive/`.
 
@@ -106,11 +106,29 @@ The catch is that the moment to do it arrives mid-work, and nothing announces it
 
 Whether enough work remains is your call — the model knows the context size, you know what's left. Decline and it won't ask again until the next threshold. See [Configuration](#configuration) for the thresholds and the off switch.
 
+## Worktrees
+
+Every worktree of a repo shares one handoffs folder, so a slice cut in a worktree survives `git worktree remove`, and every worktree lists and loads it. There's nothing to set up: git already knows where the repo lives.
+
+- Normal repo: the main worktree's `.claude/handoffs/`.
+- Bare repo with linked worktrees: a `handoffs/` folder inside the bare repo's directory, e.g. `proj.git/handoffs/`, or `proj/.bare/handoffs/` in the `.bare` layout. A bare repo has no main worktree, and any linked one can be removed, so the bare repo's directory is the only place that outlives them all. The slices sit there as plain files; they are not committed, and git ignores them.
+- Outside git, or if the main worktree is gone from disk: the current folder's `.claude/handoffs/`.
+
+`list` shows each slice's branch, since slices from every worktree land in one list. Two worktrees updating the same slice at once: the later write wins.
+
+To keep slices with the worktree instead, e.g. to commit them on its branch, set `shareAcrossWorktrees` to `false`. The first of these files that sets it decides: the worktree's own `.claude/handoff-slice.json`, the main worktree's, then `~/.claude/handoff-slice.json`. Set it in the main worktree or globally, not in one worktree only, or slices split depending on where you are.
+
+```json
+{ "shareAcrossWorktrees": false }
+```
+
+Slices cut in a worktree before 1.7.0 stay in that worktree's `.claude/handoffs/`. `load`, `update` and `close` still find them there and `list` points them out. Move them into the shared folder to see them everywhere.
+
 ## The panel and the band
 
 On Claude Code builds that run function hooks, the plugin also draws two things of its own. Every command above works the same without them.
 
-**`/handoffs`** opens a side panel with the live slices in `.claude/handoffs/` (not the archive), newest first and flagged `stale` past two weeks, followed by open issues labelled `handoff-slice`. ↑↓ selects, Enter previews, `l` puts the load command in your prompt, `r` rescans, Esc closes. The preview keeps its header in place while the text scrolls (`j`/`k`, the wheel, PgUp/PgDn; `n`/`p` jump between sections), and `m` switches to rendered markdown a page at a time. Esc goes back to the list.
+**`/handoffs`** opens a side panel with the live slices in the handoffs folder (not the archive), newest first and flagged `stale` past two weeks, followed by open issues labelled `handoff-slice`. ↑↓ selects, Enter previews, `l` puts the load command in your prompt, `r` rescans, Esc closes. The preview keeps its header in place while the text scrolls (`j`/`k`, the wheel, PgUp/PgDn; `n`/`p` jump between sections), and `m` switches to rendered markdown a page at a time. Esc goes back to the list.
 
 **The band above the prompt** appears once the context passes the same thresholds the hint uses: the size, the turns after which a restart pays off, and a button. The button reads **Slice now** (`/handoff-slice:create`), or **Update slice** when this conversation already loaded or created one, so a long session keeps one slice current instead of cutting a new one each time. Either way it fills the prompt and you press Enter. `dismiss` hides it until the next threshold, and `/handoff-slice:hints off` hides it with the hint.
 

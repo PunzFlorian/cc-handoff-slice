@@ -20,10 +20,18 @@ While extracting:
 
 ## 2a. Check for a live slice on the same topic
 
+Find the slices directory first. Every worktree of the repo shares it:
+
+```
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/slices-dir.sh"
+```
+
+It prints an absolute path, written `<dir>` below. Use that literal path, quoted, in every later command: shell variables don't survive between calls.
+
 Read only the header blocks of the live slices, never their bodies:
 
 ```
-for f in .claude/handoffs/*.md; do sed -n '1,8p' "$f"; echo; done
+for f in "<dir>"/*.md; do sed -n '1,8p' "$f"; echo; done
 ```
 
 If one's **Topic** covers the same work, don't write a second slice next to it silently. Ask:
@@ -39,7 +47,7 @@ The new slice must stand on its own. `Supersedes` is a pointer back to the archi
 
 Generate an id with `uuidgen` (lowercase it), and derive a short kebab-case slug from the topic (2-4 words).
 
-Create the directory if needed and write to `.claude/handoffs/<uuid>-<slug>.md` using this structure. Omit a section if it's genuinely empty, except **Dead Ends** — write "None" there rather than dropping it.
+Create the directory if needed and write to `<dir>/<uuid>-<slug>.md` using this structure. Omit a section if it's genuinely empty, except **Dead Ends** — write "None" there rather than dropping it.
 
 ```markdown
 # Slice: <short title>

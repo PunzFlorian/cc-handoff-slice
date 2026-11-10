@@ -9,13 +9,21 @@ The user shouldn't have to tell you what changed. Derive it from this conversati
 
 ## 1. Resolve which slice
 
-In this order:
+Find the slices directory first. Every worktree of the repo shares it:
 
-1. `$ARGUMENTS`, matched against `.claude/handoffs/` as a uuid prefix or slug substring.
+```
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/slices-dir.sh"
+```
+
+It prints an absolute path, written `<dir>` below. Use that literal path, quoted, in every later command: shell variables don't survive between calls.
+
+Then, in this order:
+
+1. `$ARGUMENTS`, matched against `<dir>/` as a uuid prefix or slug substring.
 2. If empty — the slice loaded or updated earlier in **this session**.
-3. If neither, list what's in `.claude/handoffs/` (uuid + slug + topic) and ask which one. Do **not** auto-pick the most recent.
+3. If neither, list what's in `<dir>/` (uuid + slug + topic) and ask which one. Do **not** auto-pick the most recent.
 
-Multiple matches on `$ARGUMENTS`: show them and ask. No match: also look in `.claude/handoffs/archive/`; failing that, say so and suggest `/handoff-slice:list --all`.
+Multiple matches on `$ARGUMENTS`: show them and ask. No match: also look in `<dir>/archive/`. If that finds nothing either, run the script again with `--local`: when it prints a different path, look there too. Slices cut in a worktree before slices were shared live in that worktree's own folder. Failing all that, say so and suggest `/handoff-slice:list --all`.
 
 A slice found in `archive/` was closed. Revising it is allowed, e.g. to add a lesson learned later, but say it's closed, and leave it in `archive/` with its closed Status unless the user wants to reopen it.
 

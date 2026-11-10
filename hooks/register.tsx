@@ -51,9 +51,37 @@ const loadCommand = (item: { kind: 'local' | 'issue'; id: string }) => {
 
 type $ = EngineInterface
 
+const configDir = async ($: $) =>
+  (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${(await $.env.get('HOME')) ?? '~'}/.claude`
+
 // Paths start at the project root: a `cd` during the session moves the
-// working directory, and the slices would seem to vanish with it.
-const slicesDir = async ($: $) => `${await $.session.root()}/${DIR}`
+// working directory, and the slices would seem to vanish with it. Every
+// worktree shares the main worktree's slices (a bare repo's, when there is no
+// main one), so a slice outlives the worktree it was cut in.
+// scripts/slices-dir.sh resolves the same way for the commands: change both together.
+async function slicesDir($: $) {
+  const root = await $.session.root()
+  const own = `${root}/${DIR}`
+  try {
+    const run = await $.process.run(['git', 'worktree', 'list', '--porcelain'], { timeoutMs: 5_000, cwd: root })
+    if (run.exitCode !== 0) return own
+    // The first entry is the main worktree, or the bare repo itself.
+    const first = run.stdout.split('\n\n')[0]?.split('\n') ?? []
+    const main = first[0]?.startsWith('worktree ') ? first[0].slice('worktree '.length) : ''
+    if (!main) return own
+    // The first file that sets shareAcrossWorktrees decides; true by default.
+    for (const path of [`${root}/.claude/handoff-slice.json`, `${main}/.claude/handoff-slice.json`, `${await configDir($)}/handoff-slice.json`]) {
+      const share = (await readConfig($, path))?.shareAcrossWorktrees
+      if (share === false) return own
+      if (share === true) break
+    }
+    if (first.includes('bare')) return `${main}/handoffs`
+    // Gone from disk: write nowhere near the old path.
+    return (await $.fs.exists(main)) ? `${main}/${DIR}` : own
+  } catch {
+    return own
+  }
+}
 
 async function scanLocal($: $): Promise<Handoff[]> {
   const dir = await slicesDir($)
@@ -321,7 +349,7 @@ const tiersFor = (model: string): Tiers =>
 const paybackFor = (model: string) =>
   model.startsWith('claude-opus-5-5') ? [0, 10, 7, 5] : [0, 20, 7, 4]
 
-type Config = { hints?: string; floor?: number; tiers?: Partial<Tiers>; models?: Record<string, { floor?: number; tiers?: Partial<Tiers> }> }
+type Config = { hints?: string; shareAcrossWorktrees?: unknown; floor?: number; tiers?: Partial<Tiers>; models?: Record<string, { floor?: number; tiers?: Partial<Tiers> }> }
 
 async function readConfig($: $, path: string): Promise<Config | undefined> {
   try {
@@ -334,9 +362,8 @@ async function readConfig($: $, path: string): Promise<Config | undefined> {
 // Project config wins over user config wins over the measured default, and in
 // each file a key for this model beats the flat key, as the shell hook reads it.
 async function settings($: $, model: string) {
-  const configDir = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${(await $.env.get('HOME')) ?? '~'}/.claude`
   const root = await $.session.root()
-  const files = [await readConfig($, `${root}/.claude/handoff-slice.json`), await readConfig($, `${configDir}/handoff-slice.json`)]
+  const files = [await readConfig($, `${root}/.claude/handoff-slice.json`), await readConfig($, `${await configDir($)}/handoff-slice.json`)]
   const pick = (get: (file: Config) => unknown) => files.map(file => (file ? get(file) : undefined)).find(value => value !== undefined)
   const number = (value: unknown, fallback: number) =>
     typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : fallback
@@ -576,7 +603,7 @@ export const register: Register = on => {
 
         <Text bold underline>Local</Text>
         {local.length === 0 ? (
-          <Text dimColor>No slices in {DIR}/. /handoff-slice:create makes one.</Text>
+          <Text dimColor>No slices here yet. /handoff-slice:create makes one.</Text>
         ) : (
           local.map(row)
         )}

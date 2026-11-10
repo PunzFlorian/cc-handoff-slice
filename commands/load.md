@@ -9,7 +9,15 @@ Load a slice created by `/handoff-slice:create` into the current session.
 
 If `$ARGUMENTS` is empty, tell the user to run `/handoff-slice:list` to see available slices, and stop.
 
-Otherwise look in `.claude/handoffs/` for a file whose name matches `$ARGUMENTS` as a uuid prefix or slug substring. If nothing at the top level matches, look in `.claude/handoffs/archive/`, where `/handoff-slice:close` moves closed slices.
+Find the slices directory first. Every worktree of the repo shares it:
+
+```
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/slices-dir.sh"
+```
+
+It prints an absolute path, written `<dir>` below. Use that literal path, quoted, in every later command: shell variables don't survive between calls.
+
+Look in `<dir>/` for a file whose name matches `$ARGUMENTS` as a uuid prefix or slug substring. If nothing at the top level matches, look in `<dir>/archive/`, where `/handoff-slice:close` moves closed slices. If that finds nothing either, run the script again with `--local`: when it prints a different path, look there too. Slices cut in a worktree before slices were shared live in that worktree's own folder.
 
 - No match: say so, suggest `/handoff-slice:list --all`.
 - A match in `archive/`: say it's closed, with the outcome and date from its Status and `Closed` fields, before going on. It's a record of finished work, not live work.
