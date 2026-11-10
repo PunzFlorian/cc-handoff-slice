@@ -3,9 +3,17 @@ description: Close a local handoff slice and move it to the archive, or review a
 argument-hint: "uuid or slug, then optionally done | abandoned | superseded and a reason; no arguments to review all live slices"
 ---
 
-Close a slice created by `/handoff-slice:create`. Closing **moves** the slice into `.claude/handoffs/archive/` with a closing note. It never deletes anything.
+Close a slice created by `/handoff-slice:create`. Closing **moves** the slice into the `archive/` folder beside it, with a closing note. It never deletes anything.
 
 **Never `rm` a slice file.** The handoffs folder is usually gitignored, so git holds no copy, and a deleted slice is gone with its Dead Ends — the part most worth keeping from finished or abandoned work.
+
+Find the slices directory first. Every worktree of the repo shares it:
+
+```
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/slices-dir.sh"
+```
+
+It prints an absolute path, written `<dir>` below. Use that literal path, quoted, in every later command: shell variables don't survive between calls.
 
 With no `$ARGUMENTS`, review the live slices first (below). With a slice named, skip to **1. Resolve which slice**.
 
@@ -21,7 +29,7 @@ git fetch --quiet origin
 
 Run that once, so the comparison below isn't against a stale copy of the default branch. If it fails (offline, no remote), carry on with the local refs and say so.
 
-For each `.claude/handoffs/*.md` (top level only), read the header block — `sed -n '1,10p'`, never the whole file — and run:
+For each `<dir>/*.md` (top level only), read the header block — `sed -n '1,10p'`, never the whole file — and run:
 
 ```
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/slice-merged.sh" <file>
@@ -59,7 +67,7 @@ Then close each slice the user picks with the steps below, one at a time, using 
 
 ## 1. Resolve which slice
 
-Take the first word of `$ARGUMENTS` and match it against `.claude/handoffs/*.md` (top level only) as a uuid prefix or slug substring.
+Take the first word of `$ARGUMENTS` and match it against `<dir>/*.md` (top level only) as a uuid prefix or slug substring. If nothing matches, run the script again with `--local`: when it prints a different path, look there too. Slices cut in a worktree before slices were shared live in that worktree's own folder. A slice found there is archived into that folder's own `archive/`.
 
 - No match: say so. If it matches a file in `archive/`, say that slice is already closed.
 - Multiple matches: show them (uuid + slug + topic) and ask which one.
@@ -104,10 +112,10 @@ Don't move content into Dead Ends or rewrite sections: a close records the outco
 ## 4. Move it
 
 ```
-mkdir -p .claude/handoffs/archive && mv .claude/handoffs/<file> .claude/handoffs/archive/
+mkdir -p "<dir>/archive" && mv "<dir>/<file>" "<dir>/archive/"
 ```
 
-Run this from the project root, the directory that contains `.claude/handoffs/`.
+`<dir>` is the folder the slice was found in.
 
 ## 5. Report
 

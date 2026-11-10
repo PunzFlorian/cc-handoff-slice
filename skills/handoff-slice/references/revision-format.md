@@ -118,7 +118,7 @@ The line that gets confused: **undecided is not blocked.** A slice whose next st
 
 A revision may set `Status` to `ready-to-close`. It may **not** act on that: never delete the file, never `gh issue close`. Say the slice looks closeable, offer `/handoff-slice:close <uuid>` for a local slice, and leave the act to the user.
 
-A fourth value, `closed: <outcome> — <reason>` (outcome `done`, `abandoned` or `superseded`), is written only by `/handoff-slice:close`, which also adds a `**Closed**` date and moves the file into `.claude/handoffs/archive/`.
+A fourth value, `closed: <outcome> — <reason>` (outcome `done`, `abandoned` or `superseded`), is written only by `/handoff-slice:close`, which also adds a `**Closed**` date and moves the file into the `archive/` folder beside it.
 
 ## Applying the revision
 

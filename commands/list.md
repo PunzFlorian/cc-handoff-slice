@@ -3,14 +3,26 @@ description: List handoff slices saved in this repo
 argument-hint: "--all to include closed slices from the archive"
 ---
 
-List the live slices saved under `.claude/handoffs/` in the current repo: the `.md` files at the top level. Closed slices live in `.claude/handoffs/archive/` and are left out, unless `$ARGUMENTS` is `--all`.
+Find the slices directory first. Every worktree of the repo shares it:
+
+```
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/slices-dir.sh"
+```
+
+It prints an absolute path, written `<dir>` below. Use that literal path, quoted, in every later command: shell variables don't survive between calls.
+
+List the live slices saved under `<dir>/`: the `.md` files at the top level. Closed slices live in `<dir>/archive/` and are left out, unless `$ARGUMENTS` is `--all`.
+
+Also run the script with `--local`. If it prints a different path that holds `.md` files, those are slices cut in this worktree before slices were shared. Say how many, and that `load`, `update` and `close` still find them there; moving them into `<dir>/` puts them in the shared list.
 
 If there are no live slices, tell the user so and point them at `/handoff-slice:create`. If the archive has slices, mention how many and that `--all` shows them.
 
-Otherwise, for each `.md` file, read the header block (`**UUID**`, `**Topic**`, `**Created**`, `**Updated**`, `**Status**`) and print a table:
+Otherwise, for each `.md` file, read the header block (`**UUID**`, `**Topic**`, `**Branch**`, `**Created**`, `**Updated**`, `**Status**`) and print a table:
 
-| UUID | Topic | Created | Updated | Status |
-|------|-------|---------|---------|--------|
+| UUID | Topic | Branch | Created | Updated | Status |
+|------|-------|--------|---------|---------|--------|
+
+Slices from every worktree land in one list, so `Branch` tells them apart. Print `—` where the field is missing: the default branch, or a slice written before the field existed.
 
 `Updated` is what shows rot: `Status` is freeform, so a slice can read `active` while sitting untouched for weeks. Slices written before that field existed have no `Updated` — print `—` rather than guessing, and don't backfill it.
 

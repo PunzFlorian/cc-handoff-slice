@@ -23,7 +23,7 @@ Activate when the user says things like: "hand off", "slice this off", "save thi
 - User wants to **hand this off to someone else**, or to a machine without this local file → run `/handoff-slice:issue-create <topic>`.
 - User wants to **resume from a GitHub issue** → run `/handoff-slice:issue-load <issue number or url>`.
 - A slice that already exists has gone **stale** → run `/handoff-slice:update <uuid or slug>`, or `/handoff-slice:issue-update <number>` for an issue-backed one. Not `create` — a new slice loses what the old one learned.
-- User wants to **close, finish, drop or archive** a local slice → run `/handoff-slice:close <uuid or slug>`. It moves the slice into `.claude/handoffs/archive/` with a closing note.
+- User wants to **close, finish, drop or archive** a local slice → run `/handoff-slice:close <uuid or slug>`. It moves the slice into `archive/` beside it, with a closing note.
 - User asks **which slices are done**, or wants to **tidy up** the live list → run `/handoff-slice:close` with no arguments. It reviews every live slice and proposes which to close.
 
 **Never delete a slice file**, whatever the wording: "close", "remove", "get rid of", "clean up". The handoffs folder is usually gitignored, so a deleted slice can't be restored, and its Dead Ends go with it. Closing is the way to take a slice out of the live list.
@@ -78,7 +78,7 @@ A loaded slice is a snapshot, not the truth. Work lands after a slice is written
 
 ## On session start
 
-Check whether `.claude/handoffs/` exists and has entries. If the user's first message suggests they're picking up earlier work, mention the relevant slice(s) and offer to load one — don't load automatically.
+Check whether the slices directory exists and has entries. `bash "${CLAUDE_PLUGIN_ROOT}/scripts/slices-dir.sh"` prints it: every worktree of a repo shares one, usually the main worktree's `.claude/handoffs/`. If the user's first message suggests they're picking up earlier work, mention the relevant slice(s) and offer to load one — don't load automatically.
 
 ## One slice at a time
 
