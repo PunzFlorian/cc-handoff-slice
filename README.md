@@ -111,7 +111,7 @@ Whether enough work remains is your call — the model knows the context size, y
 Every worktree of a repo shares one handoffs folder, so a slice cut in a worktree survives `git worktree remove`, and every worktree lists and loads it. There's nothing to set up: git already knows where the repo lives.
 
 - Normal repo: the main worktree's `.claude/handoffs/`.
-- Bare repo with linked worktrees: `<repo>.git/handoffs/`. A bare repo has no main worktree, and any linked one can be removed, so the slices live in the repo itself.
+- Bare repo with linked worktrees: a `handoffs/` folder inside the bare repo's directory, e.g. `proj.git/handoffs/`, or `proj/.bare/handoffs/` in the `.bare` layout. A bare repo has no main worktree, and any linked one can be removed, so the bare repo's directory is the only place that outlives them all. The slices sit there as plain files; they are not committed, and git ignores them.
 - Outside git, or if the main worktree is gone from disk: the current folder's `.claude/handoffs/`.
 
 `list` shows each slice's branch, since slices from every worktree land in one list. Two worktrees updating the same slice at once: the later write wins.
